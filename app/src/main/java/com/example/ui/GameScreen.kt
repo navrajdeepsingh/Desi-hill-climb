@@ -15,6 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
@@ -34,6 +37,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale as drawScopeScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -144,57 +148,67 @@ fun GarageMenuScreen(
 ) {
     var activeTab by remember { mutableStateOf(0) } // 0: Garage, 1: High Scores
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(16.dp)
+            .background(Color(0xFF141218)),
+        contentAlignment = Alignment.TopCenter
     ) {
-        // App Title Section with custom styling
+        Column(
+            modifier = Modifier
+                .widthIn(max = 960.dp)
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(16.dp)
+        ) {
+        // App Title Section with custom styling - Made compact and aligned beautifully at top
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
-                    text = "CLIMBING THE HILL",
-                    fontSize = 28.sp,
+                    text = "ASTAR CLIMBING",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.SansSerif,
                     color = Color(0xFFD0BCFF), // Immersive UI Purple Accent
                     modifier = Modifier.testTag("app_title")
                 )
                 Text(
-                    text = "PHY-RACER EDITION",
-                    fontSize = 12.sp,
+                    text = "• PHY-RACER",
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF938F99),
-                    letterSpacing = 2.sp
+                    letterSpacing = 1.sp
                 )
             }
 
-            // Wallet Display (Coins Available)
+            // Wallet Display (Coins Available) - Sleek and compact
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.border(1.dp, Color(0xFF49454F), RoundedCornerShape(12.dp))
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.border(1.dp, Color(0xFF49454F), RoundedCornerShape(8.dp))
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.MonetizationOn,
                         contentDescription = "Coins Balance",
                         tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${profile.coins}",
-                        fontSize = 18.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
                         modifier = Modifier.testTag("coin_wallet")
@@ -203,9 +217,9 @@ fun GarageMenuScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Navigation Tabs: Shoppe/Garage vs High Scores
+        // Navigation Tabs: Shoppe/Garage vs High Scores - Compact low-profile header height
         TabRow(
             selectedTabIndex = activeTab,
             containerColor = Color(0xFF2B2930),
@@ -218,21 +232,22 @@ fun GarageMenuScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFF49454F), RoundedCornerShape(8.dp))
+                .height(34.dp)
+                .border(1.dp, Color(0xFF49454F), RoundedCornerShape(6.dp))
         ) {
             Tab(
                 selected = activeTab == 0,
                 onClick = { activeTab = 0 },
-                text = { Text("GARAGE", fontWeight = FontWeight.Bold, letterSpacing = 1.sp) }
+                text = { Text("GARAGE", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp) }
             )
             Tab(
                 selected = activeTab == 1,
                 onClick = { activeTab = 1 },
-                text = { Text("RECORDS", fontWeight = FontWeight.Bold, letterSpacing = 1.sp) }
+                text = { Text("RECORDS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp) }
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Main Tab Content Area
         Box(
@@ -257,6 +272,7 @@ fun GarageMenuScreen(
             }
         }
     }
+}
 }
 
 @Composable
@@ -935,29 +951,29 @@ fun ActiveGameplayScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Top Header Dashboard Overlay HUD
+        // Top Header Dashboard Overlay HUD - Compact & Unobtrusive Corner HUD setup
         Column(
             modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 850.dp)
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .align(Alignment.TopCenter)
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 24.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Upper row: Distance and Coins (and Pause actions)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Distance / Score
+                // Distance / Score - Scaled elegantly for landscape
                 Column {
                     Text(
                         text = "DISTANCE",
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFCAC4D0),
-                        letterSpacing = 1.5.sp
+                        letterSpacing = 1.sp
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         val formattedDist = remember(gameState.distance) {
@@ -965,19 +981,101 @@ fun ActiveGameplayScreen(
                         }
                         Text(
                             text = "$formattedDist",
-                            fontSize = 30.sp,
+                            fontSize = 24.sp,
                             fontWeight = FontWeight.Black,
                             color = Color(0xFFD0BCFF),
                             modifier = Modifier.testTag("distance_hud")
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
+                        Spacer(modifier = Modifier.width(1.dp))
                         Text(
                             text = "m",
-                            fontSize = 12.sp,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF938F99),
-                            modifier = Modifier.padding(bottom = 4.dp)
+                            modifier = Modifier.padding(bottom = 2.dp)
                         )
+                    }
+                }
+
+                // Small Fuel & Speed Icon Corner Metrics Capsule
+                val fuelPercentage = min(100, max(0, (gameState.fuel / gameState.maxFuel * 100).roundToInt()))
+                val percentage = min(1f, max(0f, gameState.fuel / gameState.maxFuel))
+                val speedVal = floor(abs(gameState.carVelocityX) / 10f).toInt()
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xCC2B2930)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .border(1.dp, Color(0xFF49454F).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Tiny Fuel bar
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocalGasStation,
+                                contentDescription = "Fuel Icon",
+                                tint = if (fuelPercentage < 25) Color(0xFFF2B8B5) else Color(0xFFD0BCFF),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Column(verticalArrangement = Arrangement.Center) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(36.dp)
+                                        .height(3.dp)
+                                        .background(Color(0xFF49454F), RoundedCornerShape(1.5.dp))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(percentage)
+                                            .background(
+                                                color = if (fuelPercentage < 25) Color(0xFFF2B8B5) else Color(0xFFD0BCFF),
+                                                shape = RoundedCornerShape(1.5.dp)
+                                            )
+                                    )
+                                }
+                                Text(
+                                    text = "$fuelPercentage%",
+                                    fontSize = 7.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        // Vertical separator
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(14.dp)
+                                .background(Color(0xFF49454F))
+                        )
+
+                        // Tiny Speed Dial icon + reading
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = "Speed Icon",
+                                tint = Color(0xFFD0BCFF),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "$speedVal KM/H",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
 
@@ -985,30 +1083,30 @@ fun ActiveGameplayScreen(
                     // Coins Wallet Badge
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.border(1.dp, Color(0xFF49454F), RoundedCornerShape(16.dp))
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.border(1.dp, Color(0xFF49454F), RoundedCornerShape(10.dp))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(16.dp)
                                     .background(Color(0xFFFFD700), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "$",
-                                    fontSize = 14.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Black,
                                     color = Color(0xFF423300)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "${gameState.coinsRun}",
-                                fontSize = 18.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 modifier = Modifier.testTag("coins_run_hud")
@@ -1016,14 +1114,14 @@ fun ActiveGameplayScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     // Pause Button
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
                         shape = CircleShape,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(32.dp)
                             .clickable { onPauseToggle() }
                             .border(1.dp, Color(0xFF49454F), CircleShape)
                     ) {
@@ -1035,113 +1133,7 @@ fun ActiveGameplayScreen(
                                 imageVector = if (gameState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                 contentDescription = "Pause / Resume",
                                 tint = Color(0xFFE6E1E5),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Lower row: Status Bars (Fuel & Speed Gauge)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Fuel Gauge Card
-                val fuelPercentage = min(100, max(0, (gameState.fuel / gameState.maxFuel * 100).roundToInt()))
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, Color(0xFF49454F), RoundedCornerShape(12.dp))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "FUEL",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF938F99),
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = "$fuelPercentage%",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF2B8B5)
-                            )
-                        }
-                        // Progress Bar
-                        val percentage = min(1f, max(0f, gameState.fuel / gameState.maxFuel))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .background(Color(0xFF49454F), RoundedCornerShape(3.dp))
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(percentage)
-                                    .background(Color(0xFFF2B8B5), RoundedCornerShape(3.dp))
-                            )
-                        }
-                    }
-                }
-
-                // Speed Gauge Card
-                val speedVal = floor(abs(gameState.carVelocityX) / 10f).toInt()
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, Color(0xFF49454F), RoundedCornerShape(12.dp))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "SPEED",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF938F99),
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = "$speedVal KM/H",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFD0BCFF)
-                            )
-                        }
-                        // Progress Speed Bar
-                        val speedPercentage = min(1f, max(0f, abs(gameState.carVelocityX) / 1000f))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .background(Color(0xFF49454F), RoundedCornerShape(3.dp))
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(speedPercentage)
-                                    .background(Color(0xFFD0BCFF), RoundedCornerShape(3.dp))
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -1153,10 +1145,11 @@ fun ActiveGameplayScreen(
         // This keeps the landscape viewport completely clear, immersive, and functional with left/right thumb control.
         Row(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .widthIn(max = 800.dp)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 32.dp, vertical = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -1336,35 +1329,7 @@ fun ActiveGameplayScreen(
             }
         }
 
-        // Speed Dial (Visually elegant mechanical metric overlay placed above bottom pedals)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 176.dp)
-                .size(72.dp)
-                .background(Color(0xE62B2930), CircleShape)
-                .border(1.dp, Color(0xFF49454F), CircleShape)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                val speedVal = floor(abs(gameState.carVelocityX) / 10f).toInt()
-                Text(
-                    text = "$speedVal",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFFD0BCFF)
-                )
-                Text(
-                    text = "KM/H",
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF938F99)
-                )
-            }
-        }
+        // Floating metrics are now situated perfectly in the top corner capsule!
 
         // DIALOG Overlays (Pause, Game Over Crashed, Gas out)
         if (gameState.isPaused) {
@@ -1483,27 +1448,33 @@ fun GameCanvas(
     modifier: Modifier = Modifier
 ) {
     val vehicle = viewModel.getCurrentVehicle()
+    val sidhuBitmap = ImageBitmap.imageResource(id = R.drawable.img_last_ride_photo)
 
     Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
+        val rawWidth = size.width
+        val rawHeight = size.height
 
-        val gameCarX = gameState.carX
-        val gameCarY = gameState.carY
+        val scaleFactor = if (rawHeight > 0f) rawHeight / 380f else 1.0f
+        val width = rawWidth / scaleFactor
+        val height = 380f
 
-        // We place the vehicle always at 25% horizontal width of screen, and 60% vertical height of screen
-        val cameraScreenX = width * 0.25f
-        val cameraScreenY = height * 0.65f
+        drawScopeScale(scaleFactor, pivot = Offset.Zero) {
+            val gameCarX = gameState.carX
+            val gameCarY = gameState.carY
 
-        // Convert world coords -> pixel coordinates on screen
-        fun toScreenX(worldX: Float): Float {
-            return (worldX - gameCarX) + cameraScreenX
-        }
+            // We place the vehicle always at 25% horizontal width of screen, and 60% vertical height of screen
+            val cameraScreenX = width * 0.25f
+            val cameraScreenY = height * 0.65f
 
-        fun toScreenY(worldY: Float): Float {
-            // World Y climbs UP, screen Y goes DOWN. Invert!
-            return cameraScreenY - (worldY - gameCarY)
-        }
+            // Convert world coords -> pixel coordinates on screen
+            fun toScreenX(worldX: Float): Float {
+                return (worldX - gameCarX) + cameraScreenX
+            }
+
+            fun toScreenY(worldY: Float): Float {
+                // World Y climbs UP, screen Y goes DOWN. Invert!
+                return cameraScreenY - (worldY - gameCarY)
+            }
 
         // DRAW SKY BACKWARD GRADIENT
         drawRect(
@@ -1713,6 +1684,52 @@ fun GameCanvas(
             )
         }
 
+        // ----------------------------------------------------
+        // DRAW LOCKING BARRIER AT THE BACK (NEON LIGHT CHECKPOINT BAR)
+        // ----------------------------------------------------
+        val barrierWorldX = gameState.barrierX
+        val screenBarrierX = toScreenX(barrierWorldX)
+        if (screenBarrierX in -200f..(width + 200f)) {
+            val terrainY = viewModel.getTerrainHeight(barrierWorldX)
+            val barrierTopY = toScreenY(terrainY + 240f)
+            val barrierBottomY = toScreenY(terrainY - 80f)
+            
+            // Glowing hot pink/magenta column
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0x00FF007F),
+                        Color(0xE6FF007F),
+                        Color(0x00FF007F)
+                    )
+                ),
+                topLeft = Offset(screenBarrierX - 16f, barrierTopY),
+                size = Size(32f, max(1f, barrierBottomY - barrierTopY))
+            )
+            
+            // Ultra hot central light core
+            drawLine(
+                color = Color.White,
+                start = Offset(screenBarrierX, barrierTopY),
+                end = Offset(screenBarrierX, barrierBottomY),
+                strokeWidth = 3f
+            )
+
+            // Heavy gold anchor module on ground
+            val anchorSize = 12f
+            drawRoundRect(
+                color = Color(0xFFFFD700),
+                topLeft = Offset(screenBarrierX - anchorSize, barrierBottomY - 8f),
+                size = Size(anchorSize * 2f, 16f),
+                cornerRadius = CornerRadius(2f)
+            )
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(screenBarrierX - 3f, barrierBottomY - 8f),
+                size = Size(6f, 16f)
+            )
+        }
+
         // CALC VEHICLE SCREEN DRAW POINTS
         val screenCarX = toScreenX(gameCarX)
         val screenCarY = toScreenY(gameCarY)
@@ -1865,6 +1882,51 @@ fun GameCanvas(
                 topLeft = Offset(screenCarX + 1f, screenCarY - 28f),
                 size = Size(6f, 4f)
             )
+
+            // ----------------------------------------------------
+            // DRAW REAL STICKER OF SIDHU MOOSEWALA ON CAR BODY
+            // ----------------------------------------------------
+            val sWidth = when (vehicle.id) {
+                "Buggy" -> 22f
+                "MonsterTruck" -> 36f
+                else -> 28f
+            }
+            val sHeight = when (vehicle.id) {
+                "Buggy" -> 14f
+                "MonsterTruck" -> 24f
+                else -> 18f
+            }
+            val sOffsetX = when (vehicle.id) {
+                "Buggy" -> screenCarX - 24f
+                "MonsterTruck" -> screenCarX - 18f
+                else -> screenCarX - 22f
+            }
+            val sOffsetY = when (vehicle.id) {
+                "Buggy" -> screenCarY - 13f
+                "MonsterTruck" -> screenCarY - 32f
+                else -> screenCarY - 15f
+            }
+
+            // Draw thick decorative vintage gold frame
+            drawRoundRect(
+                color = Color(0xFFFFD700), // Pure Gold
+                topLeft = Offset(sOffsetX - 1.5f, sOffsetY - 1.5f),
+                size = Size(sWidth + 3f, sHeight + 3f),
+                cornerRadius = CornerRadius(2f)
+            )
+            // Draw real Sidhu Moosewala image inside the frame!
+            drawImage(
+                image = sidhuBitmap,
+                dstOffset = IntOffset(sOffsetX.toInt(), sOffsetY.toInt()),
+                dstSize = IntSize(sWidth.toInt(), sHeight.toInt())
+            )
+            // Draw a subtle dark border around the picture
+            drawRoundRect(
+                color = Color.Black.copy(alpha = 0.5f),
+                topLeft = Offset(sOffsetX, sOffsetY),
+                size = Size(sWidth, sHeight),
+                style = Stroke(width = 1f)
+            )
         }
 
         // DRAW ROTATING WHEELS at true world position
@@ -1933,6 +1995,7 @@ fun GameCanvas(
             }
         }
     }
+}
 }
 
 // Custom coordinate offset scan helper specifically avoiding layout bounds clipping

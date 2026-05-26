@@ -76,7 +76,8 @@ data class GameState(
     val lastCrashReason: String = "",
     val particles: List<Particle> = emptyList(),
     val collectedCoins: Set<Int> = emptySet(),
-    val collectedFuel: Set<Int> = emptySet()
+    val collectedFuel: Set<Int> = emptySet(),
+    val barrierX: Float = 20f
 )
 
 class GameViewModel(
@@ -240,7 +241,10 @@ class GameViewModel(
 
     // Procedural terrain heights
     fun getTerrainHeight(x: Float): Float {
-        if (x < 0f) return 0f
+        if (x < 20f) {
+            // Remove flat starting plane: turn into a steep drop-off cliff
+            return -450f + (x - 20f) * 12f
+        }
         
         // Base sine frequencies
         val baseHills = sin(x * 0.003f) * 120f
@@ -476,6 +480,18 @@ class GameViewModel(
         var newCarY = state.carY + vy * dt
         var newCarAngle = mAngle + av * dt
 
+        // Milestone tracking and barrier positioning behind the driver
+        // 100 meters translates directly to 1000px in physics X coordinates (since start is at 50f)
+        val currentRoughDistance = max(0f, (newCarX - 50f) / 10f)
+        val milestone = floor(currentRoughDistance / 100f)
+        val barrierWorldX = 20f + milestone * 1000f
+
+        // Block reversing beyond the checkpoint laser barrier
+        if (newCarX < barrierWorldX) {
+            newCarX = barrierWorldX
+            vx = max(0f, vx)
+        }
+
         // Normalize angle to its principle value [-PI, PI] to make comparison completely bug-free
         var normAngle = atan2(sin(newCarAngle), cos(newCarAngle))
 
@@ -566,7 +582,8 @@ class GameViewModel(
                 distance = displayDistance,
                 particles = particlesList,
                 collectedCoins = collectedCoinIds.toSet(),
-                collectedFuel = collectedFuelIds.toSet()
+                collectedFuel = collectedFuelIds.toSet(),
+                barrierX = barrierWorldX
             )
         }
     }

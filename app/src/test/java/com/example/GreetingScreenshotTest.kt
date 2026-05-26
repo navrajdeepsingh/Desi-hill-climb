@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.example.data.PlayerProfile
 import com.example.ui.GarageMenuScreen
+import com.example.ui.MusicTrack
 import com.example.ui.theme.MyApplicationTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -30,6 +31,8 @@ class GreetingScreenshotTest {
           topRuns = emptyList(),
           unlockedVehicles = setOf("Buggy", "MonsterTruck"),
           upgradeCosts = listOf(0, 150, 300, 600, 1200, 2000, 3500, 5000, 7500, 10000),
+          activeTrack = MusicTrack.OLD_SKOOL,
+          onTrackSelected = {},
           onStartRun = {},
           onUpgrade = {},
           onSelectVehicle = {},
