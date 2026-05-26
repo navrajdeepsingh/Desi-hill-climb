@@ -11,6 +11,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.alpha
+import com.example.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +60,8 @@ fun GameScreen(
     val topRuns by viewModel.topRuns.collectAsStateWithLifecycle()
     val unlockedVehicles by viewModel.unlockedVehicles.collectAsStateWithLifecycle()
 
+    var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
+
     // Manage lobby background music play state
     DisposableEffect(gameState.gameActive) {
         if (!gameState.gameActive) {
@@ -71,12 +80,33 @@ fun GameScreen(
             .background(Color(0xFF1C1B1F)) // Fallback deep space background
     ) {
         if (!gameState.gameActive) {
+            // Sidhu Moosewala theme background decoration (B&W portrait or Cute Infant Son visual)
+            Image(
+                painter = painterResource(
+                    id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_sidhu_son_bg
+                ),
+                contentDescription = "Theme Background",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = if (activeTrack == MusicTrack.THE_LAST_RIDE) 0.5f else 0.35f
+            )
+            // Soft overlay to maintain exceptional contrast for readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = if (activeTrack == MusicTrack.THE_LAST_RIDE) 0.55f else 0.45f))
+            )
             // Main Menu & Garage / Upgrades Shop
             GarageMenuScreen(
                 profile = profile ?: PlayerProfile(),
                 topRuns = topRuns,
                 unlockedVehicles = unlockedVehicles,
                 upgradeCosts = viewModel.UPGRADE_COSTS,
+                activeTrack = activeTrack,
+                onTrackSelected = { selectedTrack ->
+                    activeTrack = selectedTrack
+                    LobbyMusicPlayer.setTrackAndRestart(selectedTrack)
+                },
                 onStartRun = { viewModel.startNewRun() },
                 onUpgrade = { viewModel.purchaseUpgrade(it) },
                 onSelectVehicle = { viewModel.selectVehicle(it) },
@@ -103,6 +133,8 @@ fun GarageMenuScreen(
     topRuns: List<RunHistory>,
     unlockedVehicles: Set<String>,
     upgradeCosts: List<Int>,
+    activeTrack: MusicTrack,
+    onTrackSelected: (MusicTrack) -> Unit,
     onStartRun: () -> Unit,
     onUpgrade: (String) -> Unit,
     onSelectVehicle: (String) -> Unit,
@@ -211,6 +243,8 @@ fun GarageMenuScreen(
                     profile = profile,
                     unlockedVehicles = unlockedVehicles,
                     upgradeCosts = upgradeCosts,
+                    activeTrack = activeTrack,
+                    onTrackSelected = onTrackSelected,
                     onStartRun = onStartRun,
                     onUpgrade = onUpgrade,
                     onSelectVehicle = onSelectVehicle,
@@ -228,14 +262,93 @@ fun GarageTab(
     profile: PlayerProfile,
     unlockedVehicles: Set<String>,
     upgradeCosts: List<Int>,
+    activeTrack: MusicTrack,
+    onTrackSelected: (MusicTrack) -> Unit,
     onStartRun: () -> Unit,
     onUpgrade: (String) -> Unit,
     onSelectVehicle: (String) -> Unit,
     onUnlockVehicle: (VehicleType) -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
     ) {
+        // Sidhu Moosewala Tribute Player & Theme Switcher
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0x992B2930)),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+                .border(2.dp, Color(0xFFD0BCFF).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Circular thumbnail of active theme
+                Surface(
+                    shape = CircleShape,
+                    modifier = Modifier.size(60.dp).border(2.dp, Color(0xFFD0BCFF), CircleShape),
+                    color = Color.Black
+                ) {
+                    Image(
+                        painter = painterResource(
+                            id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_sidhu_son_bg
+                        ),
+                        contentDescription = "Theme Thumbnail",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "SIDHU MOOSEWALA TRIBUTE",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFD0BCFF),
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = if (activeTrack == MusicTrack.THE_LAST_RIDE) "The Last Ride (B&W Photo)" else "Old Skool (Son Theme)",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Background procedural beat loop playing",
+                        fontSize = 11.sp,
+                        color = Color(0xFF938F99)
+                    )
+                }
+
+                // Switch Button to cycle theme and music
+                Button(
+                    onClick = {
+                        val nextTrack = if (activeTrack == MusicTrack.THE_LAST_RIDE) MusicTrack.OLD_SKOOL else MusicTrack.THE_LAST_RIDE
+                        onTrackSelected(nextTrack)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4F378B),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = "Switch Track",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Toggle", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         // Horizontal list of selectable/unlockable vehicles
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
@@ -287,7 +400,6 @@ fun GarageTab(
 
         Column(
             modifier = Modifier
-                .weight(1f)
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
