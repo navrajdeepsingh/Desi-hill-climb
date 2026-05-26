@@ -516,10 +516,18 @@ class GameViewModel(
         val displayDistance = max(0f, (newCarX - 50f) / 10f)
 
         // Crash mechanics: head touch ground, or car is extremely upside down on contact (relaxed for stability & spawn protection)
-        val isHeadCrashed = displayDistance > 0.8f && (
+        val headLocalX = -2f
+        val headLocalY = 26f
+        val headWorldX = newCarX + headLocalX * cos(newCarAngle) - headLocalY * sin(newCarAngle)
+        val headWorldY = newCarY + headLocalX * sin(newCarAngle) + headLocalY * cos(newCarAngle)
+        val groundHeightAtHead = getTerrainHeight(headWorldX)
+
+        val isHeadHittingGround = displayDistance > 0.8f && (headWorldY <= groundHeightAtHead + 2.0f)
+
+        val isHeadCrashed = isHeadHittingGround || (displayDistance > 0.8f && (
             (newCarY <= centerGroundY + 12f && abs(normAngle) > PI / 1.9f) ||
             (abs(normAngle) > PI / 1.3f && anyGroundContact)
-        )
+        ))
 
         if (isHeadCrashed) {
             _gameState.update {

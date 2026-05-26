@@ -17,6 +17,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import com.example.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -83,12 +85,12 @@ fun GameScreen(
             // Sidhu Moosewala theme background decoration (B&W portrait or Cute Infant Son visual)
             Image(
                 painter = painterResource(
-                    id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_sidhu_son_bg
+                    id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_prem_dhillon
                 ),
                 contentDescription = "Theme Background",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                alpha = if (activeTrack == MusicTrack.THE_LAST_RIDE) 0.5f else 0.35f
+                alpha = if (activeTrack == MusicTrack.THE_LAST_RIDE) 0.5f else 0.45f
             )
             // Soft overlay to maintain exceptional contrast for readability
             Box(
@@ -295,7 +297,7 @@ fun GarageTab(
                 ) {
                     Image(
                         painter = painterResource(
-                            id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_sidhu_son_bg
+                            id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_prem_dhillon
                         ),
                         contentDescription = "Theme Thumbnail",
                         contentScale = ContentScale.Crop,
@@ -314,7 +316,7 @@ fun GarageTab(
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = if (activeTrack == MusicTrack.THE_LAST_RIDE) "The Last Ride (B&W Photo)" else "Old Skool (Son Theme)",
+                        text = if (activeTrack == MusicTrack.THE_LAST_RIDE) "The Last Ride (B&W Photo)" else "Old Skool (Prem Dhillon)",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
@@ -1147,125 +1149,191 @@ fun ActiveGameplayScreen(
             }
         }
 
-        // Game controls trigger regions
-        Column(
+        // Game controls: Floating beautiful, realistic steel-textured pedals on bottom-left and bottom-right corners!
+        // This keeps the landscape viewport completely clear, immersive, and functional with left/right thumb control.
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1C1B1F))
                 .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.Bottom
+            // BRAKE PEDAL (Brake & Reverse)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // BRAKE PEDAL column
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                // Realistic Metallic Brake Pedal (Wider, medium height)
+                Box(
+                    modifier = Modifier
+                        .width(72.dp)
+                        .height(100.dp)
+                        .scale(if (brakePressed) 0.94f else 1.0f) // subtle depress animation!
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = if (brakePressed) {
+                                    listOf(Color(0xFF2D2B2E), Color(0xFF1E1C1F))
+                                } else {
+                                    listOf(Color(0xFF4A484D), Color(0xFF2B292C))
+                                }
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .border(
+                            width = 2.dp,
+                            color = if (brakePressed) Color(0xFFE8B4B0) else Color(0xFF8E8A94),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .shadow(
+                            elevation = if (brakePressed) 2.dp else 6.dp,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    brakePressed = true
+                                    try {
+                                        awaitRelease()
+                                    } finally {
+                                        brakePressed = false
+                                    }
+                                }
+                            )
+                        }
+                        .testTag("brake_pedal"),
+                    contentAlignment = Alignment.Center
                 ) {
+                    // Vertical steel grip ridges
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        repeat(5) {
+                            Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .fillMaxHeight(0.75f)
+                                    .align(Alignment.CenterVertically)
+                                    .background(
+                                        color = if (brakePressed) Color(0xFF8A1E1E) else Color(0xFF1C1A1D),
+                                        shape = RoundedCornerShape(2.dp)
+                                    )
+                            )
+                        }
+                    }
+                    // Outer label overlay
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(96.dp)
-                            .background(
-                                color = if (brakePressed) Color(0xFF410E0B) else Color(0xFF311111),
-                                shape = RoundedCornerShape(32.dp)
-                            )
-                            .border(2.dp, Color(0xFF8C1D18), RoundedCornerShape(32.dp))
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = {
-                                        brakePressed = true
-                                        try {
-                                            awaitRelease()
-                                        } finally {
-                                            brakePressed = false
-                                        }
-                                    }
-                                )
-                            }
-                            .testTag("brake_pedal"),
-                        contentAlignment = Alignment.Center
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "BRAKE",
-                            color = Color(0xFFF2B8B5),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.5).sp
+                            color = if (brakePressed) Color(0xFFF2B8B5) else Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
                         )
                     }
-                    Text(
-                        text = "REVERSE",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF938F99),
-                        letterSpacing = 1.5.sp
-                    )
                 }
+                Text(
+                    text = "REVERSE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
+            }
 
-                // GAS PEDAL column
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+            // GAS PEDAL (Accelerate)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Realistic Metallic Gas Pedal (Narrower, taller profile)
+                Box(
+                    modifier = Modifier
+                        .width(58.dp)
+                        .height(125.dp)
+                        .scale(if (gasPressed) 0.94f else 1.0f) // subtle depress animation!
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = if (gasPressed) {
+                                    listOf(Color(0xFF2A243A), Color(0xFF1B1626))
+                                } else {
+                                    listOf(Color(0xFF4F4666), Color(0xFF2E273D))
+                                }
+                            ),
+                            shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+                        )
+                        .border(
+                            width = 2.dp,
+                            color = if (gasPressed) Color(0xFFD0BCFF) else Color(0xFF8E8A94),
+                            shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+                        )
+                        .shadow(
+                            elevation = if (gasPressed) 2.dp else 6.dp,
+                            shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+                        )
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    gasPressed = true
+                                    try {
+                                        awaitRelease()
+                                    } finally {
+                                        gasPressed = false
+                                    }
+                                }
+                            )
+                        }
+                        .testTag("gas_pedal"),
+                    contentAlignment = Alignment.Center
                 ) {
+                    // Vertical steel lines
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        repeat(4) {
+                            Box(
+                                modifier = Modifier
+                                    .width(3.dp)
+                                    .fillMaxHeight(0.82f)
+                                    .align(Alignment.CenterVertically)
+                                    .background(
+                                        color = if (gasPressed) Color(0xFFD0BCFF) else Color(0xFF14111A),
+                                        shape = RoundedCornerShape(1.5.dp)
+                                    )
+                            )
+                        }
+                    }
+                    // Outer label overlay
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(128.dp) // Taller than brake like in HTML design!
-                            .background(
-                                color = if (gasPressed) Color(0xFF381E72) else Color(0xFF21005D),
-                                shape = RoundedCornerShape(32.dp)
-                            )
-                            .border(2.dp, Color(0xFF6750A4), RoundedCornerShape(32.dp))
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = {
-                                        gasPressed = true
-                                        try {
-                                            awaitRelease()
-                                        } finally {
-                                            gasPressed = false
-                                        }
-                                    }
-                                )
-                            }
-                            .testTag("gas_pedal"),
-                        contentAlignment = Alignment.Center
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "GAS",
-                            color = Color(0xFFD0BCFF),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
+                            color = if (gasPressed) Color(0xFFD0BCFF) else Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                            letterSpacing = (-1).sp
+                            letterSpacing = 0.5.sp
                         )
                     }
-                    Text(
-                        text = "ACCELERATE",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF938F99),
-                        letterSpacing = 1.5.sp
-                    )
                 }
+                Text(
+                    text = "ACCEL",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
             }
-
-            // Material Design 3 Bottom Nav Indicator element
-            Box(
-                modifier = Modifier
-                    .width(48.dp)
-                    .height(4.dp)
-                    .background(Color(0xFF49454F), RoundedCornerShape(2.dp))
-            )
         }
 
         // Speed Dial (Visually elegant mechanical metric overlay placed above bottom pedals)

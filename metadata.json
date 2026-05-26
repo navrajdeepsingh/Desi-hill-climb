@@ -1,5 +1,5 @@
 {
-  "name": "Climbing the Hill",
+  "name": "Astar Climbing",
   "description": "Drive a physics-propelled vehicle up rugged mountain tracks, collect coins, and upgrade engine power, grip, suspension, and fuel capacity to conquer steep slopes without crashing!",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
