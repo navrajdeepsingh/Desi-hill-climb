@@ -116,6 +116,7 @@ class GameViewModel(
     // Coin tracking list within active run
     private val collectedCoinIds = mutableSetOf<Int>()
     private val collectedFuelIds = mutableSetOf<Int>()
+    private var maxCarXReached = 50f
 
     init {
         // Load unlocked vehicles from shared preferences OR save initial state
@@ -188,6 +189,7 @@ class GameViewModel(
     fun startNewRun() {
         collectedCoinIds.clear()
         collectedFuelIds.clear()
+        maxCarXReached = 50f
         
         val activeVehicle = getCurrentVehicle()
         val profile = playerProfile.value ?: PlayerProfile()
@@ -410,25 +412,34 @@ class GameViewModel(
             val brakeBase = 220f * gripMultiplier
 
             if (gasPressed) {
-                val forceX = powerBase * cos(hillAngle)
-                val forceY = powerBase * sin(hillAngle)
-                vx += forceX * dt / vehicle.baseMass
-                vy += forceY * dt / vehicle.baseMass
-                
-                // Active acceleration pitch torque (lively wheelie feel)
-                av += 3.5f * dt / vehicle.baseMass
-                
-                // Spin wheels forward with some active slip
-                newRearWheelAngle += baseRollDelta + 8f * dt
-                newFrontWheelAngle += baseRollDelta + 8f * dt
-                
-                // Smoke dust under active tire accumulated locally
-                if (rearContact && Math.random() < 0.25) {
-                    spawnSmokeParticle(rearX, rearY, particlesList)
+                // RWD 2WD: Propulsion force is ONLY applied when the rear (back) tire has contact with the ground!
+                if (rearContact) {
+                    val forceX = powerBase * cos(hillAngle)
+                    val forceY = powerBase * sin(hillAngle)
+                    vx += forceX * dt / vehicle.baseMass
+                    vy += forceY * dt / vehicle.baseMass
+                    
+                    // Active acceleration pitch torque (lively wheelie feel)
+                    av += 4.5f * dt / vehicle.baseMass
+                    
+                    // Spin back wheel forward with some active power slip
+                    newRearWheelAngle += baseRollDelta + 12f * dt
+                    
+                    // Smoke dust under active tire accumulated locally
+                    if (Math.random() < 0.25) {
+                        spawnSmokeParticle(rearX, rearY, particlesList)
+                    }
+                } else {
+                    // Back wheel is in the air: no forward propulsion force!
+                    // But back wheel spins super fast in mid-air because it is under power
+                    newRearWheelAngle += baseRollDelta + 32f * dt
                 }
+                // Front wheel is passive (non-driven): only rolls matching background speed
+                newFrontWheelAngle += baseRollDelta
             } else if (brakePressed) {
                 // Brake or Reverse
                 if (vx > 10f) {
+                    // Brake force works on both/any wheels that have contact
                     vx -= brakeBase * sign(vx) * dt / vehicle.baseMass
                     vy -= brakeBase * sign(vy) * dt / vehicle.baseMass
                     av -= 2.0f * dt / vehicle.baseMass
@@ -436,13 +447,18 @@ class GameViewModel(
                     newRearWheelAngle += baseRollDelta * 0.15f
                     newFrontWheelAngle += baseRollDelta * 0.15f
                 } else {
-                    val revForceX = -120f * cos(hillAngle)
-                    val revForceY = -120f * sin(hillAngle)
-                    vx += revForceX * dt
-                    vy += revForceY * dt
-                    // Spin backwards / reverse
-                    newRearWheelAngle += baseRollDelta - 4f * dt
-                    newFrontWheelAngle += baseRollDelta - 4f * dt
+                    // Reverse propulsion (Back-wheel drive reverse is also RWD)
+                    if (rearContact) {
+                        val revForceX = -120f * cos(hillAngle)
+                        val revForceY = -120f * sin(hillAngle)
+                        vx += revForceX * dt
+                        vy += revForceY * dt
+                        newRearWheelAngle += baseRollDelta - 8f * dt
+                    } else {
+                        // Backend is in the air: spins backwards uselessly
+                        newRearWheelAngle += baseRollDelta - 24f * dt
+                    }
+                    newFrontWheelAngle += baseRollDelta
                 }
             } else {
                 // Slow down nicely due to rolling mechanical resistance/friction (solving "no friction")
@@ -456,9 +472,9 @@ class GameViewModel(
             val airTorque = 4.2f
             if (gasPressed) {
                 av += airTorque * dt
-                // Spin wheels forward in mid-air
-                newRearWheelAngle += 18f * dt
-                newFrontWheelAngle += 18f * dt
+                // RWD: Rear wheel spins forward under power in mid-air, front wheel is passive
+                newRearWheelAngle += 24f * dt
+                newFrontWheelAngle += baseRollDelta
             } else if (brakePressed) {
                 av -= airTorque * dt
                 // Lock / stop wheels in mid-air
@@ -480,15 +496,18 @@ class GameViewModel(
         var newCarY = state.carY + vy * dt
         var newCarAngle = mAngle + av * dt
 
-        // Milestone tracking and barrier positioning behind the driver
-        // 100 meters translates directly to 1000px in physics X coordinates (since start is at 50f)
-        val currentRoughDistance = max(0f, (newCarX - 50f) / 10f)
-        val milestone = floor(currentRoughDistance / 100f)
-        val barrierWorldX = 20f + milestone * 1000f
+        // Track the maximum X coordinate reached during the run
+        if (newCarX > maxCarXReached) {
+            maxCarXReached = newCarX
+        }
+        // Smooth dynamic barrier always 100 meters (1000f world units) behind the driver's maximum progress
+        val barrierWorldX = max(20f, maxCarXReached - 1000f)
 
-        // Block reversing beyond the checkpoint laser barrier
-        if (newCarX < barrierWorldX) {
-            newCarX = barrierWorldX
+        // Robust rearmost tire-limit collision enforcement: do not let ANY part of the car cross the invisible barrier
+        val halfWDist = vehicle.wheelBase / 2f
+        val carRearLimitX = newCarX - halfWDist - vehicle.wheelRadius
+        if (carRearLimitX < barrierWorldX) {
+            newCarX = barrierWorldX + halfWDist + vehicle.wheelRadius
             vx = max(0f, vx)
         }
 

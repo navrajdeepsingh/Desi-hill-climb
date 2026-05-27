@@ -67,14 +67,22 @@ fun GameScreen(
     val unlockedVehicles by viewModel.unlockedVehicles.collectAsStateWithLifecycle()
 
     var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
+    var isRadioOn by remember { mutableStateOf(true) }
 
-    // Manage lobby background music play state
-    DisposableEffect(gameState.gameActive) {
+    // Dynamic background/radio music master controller (Lobby is always ON, gameplay respects radio toggle)
+    LaunchedEffect(gameState.gameActive, activeTrack, isRadioOn) {
         if (!gameState.gameActive) {
-            LobbyMusicPlayer.start()
+            LobbyMusicPlayer.setTrackAndRestart(activeTrack)
         } else {
-            LobbyMusicPlayer.stop()
+            if (isRadioOn) {
+                LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+            } else {
+                LobbyMusicPlayer.stop()
+            }
         }
+    }
+
+    DisposableEffect(Unit) {
         onDispose {
             LobbyMusicPlayer.stop()
         }
@@ -124,6 +132,12 @@ fun GameScreen(
                 gameState = gameState,
                 profile = profile ?: PlayerProfile(),
                 viewModel = viewModel,
+                activeTrack = activeTrack,
+                onTrackSelected = { selectedTrack ->
+                    activeTrack = selectedTrack
+                },
+                isRadioOn = isRadioOn,
+                onRadioToggle = { isRadioOn = !isRadioOn },
                 onPauseToggle = {
                     if (gameState.isPaused) viewModel.resumeGame() else viewModel.pauseGame()
                 },
@@ -913,6 +927,10 @@ fun ActiveGameplayScreen(
     gameState: GameState,
     profile: PlayerProfile,
     viewModel: GameViewModel,
+    activeTrack: MusicTrack,
+    onTrackSelected: (MusicTrack) -> Unit,
+    isRadioOn: Boolean,
+    onRadioToggle: () -> Unit,
     onPauseToggle: () -> Unit,
     onExit: () -> Unit
 ) {
@@ -948,6 +966,7 @@ fun ActiveGameplayScreen(
         GameCanvas(
             gameState = gameState,
             viewModel = viewModel,
+            activeTrack = activeTrack,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -1139,6 +1158,20 @@ fun ActiveGameplayScreen(
                     }
                 }
             }
+
+            // Beautiful Retro Interactive Dashboard Radio
+            DashboardRadioPlayer(
+                activeTrack = activeTrack,
+                isRadioOn = isRadioOn,
+                onRadioToggle = onRadioToggle,
+                onStationChange = {
+                    val nextTrack = if (activeTrack == MusicTrack.THE_LAST_RIDE) MusicTrack.OLD_SKOOL else MusicTrack.THE_LAST_RIDE
+                    onTrackSelected(nextTrack)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 4.dp)
+            )
         }
 
         // Game controls: Floating beautiful, realistic steel-textured pedals on bottom-left and bottom-right corners!
@@ -1445,10 +1478,10 @@ fun GameOverlayDialog(
 fun GameCanvas(
     gameState: GameState,
     viewModel: GameViewModel,
+    activeTrack: MusicTrack,
     modifier: Modifier = Modifier
 ) {
     val vehicle = viewModel.getCurrentVehicle()
-    val sidhuBitmap = ImageBitmap.imageResource(id = R.drawable.img_last_ride_photo)
 
     Canvas(modifier = modifier) {
         val rawWidth = size.width
@@ -1476,26 +1509,42 @@ fun GameCanvas(
                 return cameraScreenY - (worldY - gameCarY)
             }
 
-        // DRAW SKY BACKWARD GRADIENT
+        // DRAW SKY BACKWARD GRADIENT WITH PUNJAB VILLAGE VIBES (Golden Sunrise/Sunset over crop pastures)
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF0F0E13), Color(0xFF1C1B1F))
+                colors = listOf(
+                    Color(0xFF7DD3FC), // Sky soft cyan-blue
+                    Color(0xFFFED7AA), // Soft warm sunrise orange
+                    Color(0xFFFEF08A)  // Sunny gold hue of yellow pastures near horizon
+                )
             ),
             size = size
         )
 
-        // DRAW Distance Clouds (Parallax Scrolling)
+        // Draw a gorgeous, warm bright Sun of Punjab
+        drawCircle(
+            color = Color(0xFFFEF08A).copy(alpha = 0.4f),
+            radius = 75f,
+            center = Offset(width * 0.2f, height * 0.18f)
+        )
+        drawCircle(
+            color = Color(0xFFFDE047), // Sunny Yellow Core
+            radius = 45f,
+            center = Offset(width * 0.2f, height * 0.18f)
+        )
+
+        // DRAW Distance Clouds (Parallax Scrolling) - warm fluffy afternoon clouds
         val cloudScroll1 = (gameCarX * 0.08f) % width
         val cloudHeight = height * 0.15f
-        drawCircle(Color(0x11FFFFFF), radius = 110f, center = Offset(width * 0.3f - cloudScroll1, cloudHeight))
-        drawCircle(Color(0x11FFFFFF), radius = 130f, center = Offset(width * 0.35f - cloudScroll1, cloudHeight - 15f))
-        drawCircle(Color(0x11FFFFFF), radius = 90f, center = Offset(width * 0.42f - cloudScroll1, cloudHeight + 5f))
+        drawCircle(Color.White.copy(alpha = 0.5f), radius = 110f, center = Offset(width * 0.3f - cloudScroll1, cloudHeight))
+        drawCircle(Color.White.copy(alpha = 0.5f), radius = 130f, center = Offset(width * 0.35f - cloudScroll1, cloudHeight - 15f))
+        drawCircle(Color.White.copy(alpha = 0.5f), radius = 90f, center = Offset(width * 0.42f - cloudScroll1, cloudHeight + 5f))
 
         val cloudScroll2 = (gameCarX * 0.04f) % width
-        drawCircle(Color(0x06FFFFFF), radius = 140f, center = Offset(width * 0.7f - cloudScroll2, cloudHeight * 1.5f))
-        drawCircle(Color(0x06FFFFFF), radius = 160f, center = Offset(width * 0.78f - cloudScroll2, cloudHeight * 1.5f - 20f))
+        drawCircle(Color.White.copy(alpha = 0.3f), radius = 140f, center = Offset(width * 0.7f - cloudScroll2, cloudHeight * 1.4f))
+        drawCircle(Color.White.copy(alpha = 0.3f), radius = 160f, center = Offset(width * 0.78f - cloudScroll2, cloudHeight * 1.4f - 20f))
 
-        // Distant Distant Mountain range (Parallax 2)
+        // Distant hills representing golden fields / forest lines
         val mountPathBack = Path()
         val mountScrollBack = (gameCarX * 0.15f) % (width * 1.5f)
         mountPathBack.moveTo(0f, height)
@@ -1506,9 +1555,10 @@ fun GameCanvas(
         }
         mountPathBack.lineTo(width, height)
         mountPathBack.close()
-        drawPath(mountPathBack, Color(0xFF6750A4).copy(alpha = 0.2f))
+        // Amber/Golden yellow silhouettes for distant crops
+        drawPath(mountPathBack, Color(0xFFCA8A04).copy(alpha = 0.25f))
 
-        // Closer Mountain range (Parallax 3)
+        // Closer hills representing lush sugarcane / village tree groves
         val mountPathMid = Path()
         val mountScrollMid = (gameCarX * 0.35f) % (width * 1.5f)
         mountPathMid.moveTo(0f, height)
@@ -1519,7 +1569,8 @@ fun GameCanvas(
         }
         mountPathMid.lineTo(width, height)
         mountPathMid.close()
-        drawPath(mountPathMid, Color(0xFF332D41).copy(alpha = 0.35f))
+        // Lush deep green pastures
+        drawPath(mountPathMid, Color(0xFF15803D).copy(alpha = 0.30f))
 
         // SPANNING ACTIVE CORE TERRAIN HILL PATH
         val fillPath = Path()
@@ -1554,25 +1605,74 @@ fun GameCanvas(
         fillPath.lineTo(toScreenX(startGroundX), height + 100f)
         fillPath.close()
 
-        // Draw underground soil
+        // Draw underground soil - Fertile Punjab brown agricultural soil gradient
         drawPath(
             path = fillPath,
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF332D41), Color(0xFF1E1C24)) // Dark immersive violet clay
+                colors = listOf(
+                    Color(0xFF78350F), // Rich warm clay topsoil
+                    Color(0xFF451A03), // Deep earthy black/brown subsoil
+                )
             )
         )
 
-        // Draw Immersive Neon outline crust
+        // Draw Immersive grassy and golden flowering outline crust of Punjab
         drawPath(
             path = borderPath,
-            color = Color(0xFF332D41), // Deep purple crust backing
+            color = Color(0xFF166534), // Deep organic forest green root grass backing
             style = Stroke(width = 8f, join = StrokeJoin.Round)
         )
         drawPath(
             path = borderPath,
-            color = Color(0xFFD0BCFF), // Glowing soft lavender outline line
+            color = Color(0xFF22C55E), // Lush vibrant green turfgrass outline line
             style = Stroke(width = 4f, join = StrokeJoin.Round)
         )
+        drawPath(
+            path = borderPath,
+            color = Color(0xFFFDE047), // Beautiful golden "Sarson" mustard bloom highlights on the hilltops
+            style = Stroke(width = 1.5f, join = StrokeJoin.Round)
+        )
+
+        // DRAW BEAUTIFUL PUNJAB VILLAGE RURAL VEGETATION (Wheat and Yellow Mustard / Sarson Stalks)
+        var vegX = startGroundX - (startGroundX % 40f)
+        while (vegX <= endGroundX) {
+            val vegY = viewModel.getTerrainHeight(vegX)
+            val scrX = toScreenX(vegX)
+            val scrY = toScreenY(vegY)
+            if (scrX in -20f..(width + 20f)) {
+                val seed = (vegX.toInt() * 17) % 100
+                if (seed in 0..25) {
+                    // Draw lush green grass blades (wheat stalks)
+                    drawLine(
+                        color = Color(0xFF16A34A),
+                        start = Offset(scrX, scrY),
+                        end = Offset(scrX - 4f, scrY - 14f),
+                        strokeWidth = 2.5f
+                    )
+                    drawLine(
+                        color = Color(0xFF22C55E),
+                        start = Offset(scrX, scrY),
+                        end = Offset(scrX + 5f, scrY - 12f),
+                        strokeWidth = 2f
+                    )
+                } else if (seed in 26..45) {
+                    // Draw majestic yellow flowering Sarson (mustard) plants
+                    // Main organic stem
+                    drawLine(
+                        color = Color(0xFF15803D),
+                        start = Offset(scrX, scrY),
+                        end = Offset(scrX, scrY - 26f),
+                        strokeWidth = 3f
+                    )
+                    // Yellow blossoms (Sarson)
+                    drawCircle(Color(0xFFFDE047), radius = 5f, center = Offset(scrX, scrY - 26f))
+                    drawCircle(Color(0xFFFDE047), radius = 3.5f, center = Offset(scrX - 3.5f, scrY - 23f))
+                    drawCircle(Color(0xFFFDE047), radius = 3.5f, center = Offset(scrX + 3.5f, scrY - 23f))
+                    drawCircle(Color(0xFFEAB308), radius = 2.5f, center = Offset(scrX, scrY - 28f))
+                }
+            }
+            vegX += 40f
+        }
 
         // DRAW PICKUPS: Procedural Coins and Fuels on viewports
         val collCheckSpan = 150f
@@ -1684,51 +1784,7 @@ fun GameCanvas(
             )
         }
 
-        // ----------------------------------------------------
-        // DRAW LOCKING BARRIER AT THE BACK (NEON LIGHT CHECKPOINT BAR)
-        // ----------------------------------------------------
-        val barrierWorldX = gameState.barrierX
-        val screenBarrierX = toScreenX(barrierWorldX)
-        if (screenBarrierX in -200f..(width + 200f)) {
-            val terrainY = viewModel.getTerrainHeight(barrierWorldX)
-            val barrierTopY = toScreenY(terrainY + 240f)
-            val barrierBottomY = toScreenY(terrainY - 80f)
-            
-            // Glowing hot pink/magenta column
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color(0x00FF007F),
-                        Color(0xE6FF007F),
-                        Color(0x00FF007F)
-                    )
-                ),
-                topLeft = Offset(screenBarrierX - 16f, barrierTopY),
-                size = Size(32f, max(1f, barrierBottomY - barrierTopY))
-            )
-            
-            // Ultra hot central light core
-            drawLine(
-                color = Color.White,
-                start = Offset(screenBarrierX, barrierTopY),
-                end = Offset(screenBarrierX, barrierBottomY),
-                strokeWidth = 3f
-            )
-
-            // Heavy gold anchor module on ground
-            val anchorSize = 12f
-            drawRoundRect(
-                color = Color(0xFFFFD700),
-                topLeft = Offset(screenBarrierX - anchorSize, barrierBottomY - 8f),
-                size = Size(anchorSize * 2f, 16f),
-                cornerRadius = CornerRadius(2f)
-            )
-            drawRect(
-                color = Color.Black,
-                topLeft = Offset(screenBarrierX - 3f, barrierBottomY - 8f),
-                size = Size(6f, 16f)
-            )
-        }
+        // Note: Checkpoint lasers/barriers are kept active in physics but made completely invisible for immersive realism.
 
         // CALC VEHICLE SCREEN DRAW POINTS
         val screenCarX = toScreenX(gameCarX)
@@ -1736,6 +1792,28 @@ fun GameCanvas(
 
         val wBase = vehicle.wheelBase
         val rad = vehicle.wheelRadius
+
+        // DRAW REALISTIC VEHICLE DYNAMIC DROP SHADOW ON TERRAIN
+        val shadowTerrainY = viewModel.getTerrainHeight(gameCarX)
+        val screenShadowX = toScreenX(gameCarX)
+        val screenShadowY = toScreenY(shadowTerrainY)
+        // High fidelity drop shadow that disperses/fades as the vehicle gains altitude (air time)
+        val altitudeDifference = screenShadowY - screenCarY
+        val maxShadowAltitude = 160f
+        val shadowAlpha = if (altitudeDifference > 0f) {
+            max(0.04f, 0.45f * (1f - min(1f, altitudeDifference / maxShadowAltitude)))
+        } else 0.45f
+        val shadowWidthScale = if (altitudeDifference > 0f) {
+            max(0.6f, 1f - 0.35f * min(1f, altitudeDifference / maxShadowAltitude))
+        } else 1.0f
+        
+        if (screenShadowX in -100f..(width + 100f)) {
+            drawOval(
+                color = Color.Black.copy(alpha = shadowAlpha),
+                topLeft = Offset(screenShadowX - (wBase * 0.7f * shadowWidthScale), screenShadowY - 4f),
+                size = Size(wBase * 1.4f * shadowWidthScale, 8f)
+            )
+        }
 
         // Wheels offsets from car chassis
         val rearWheelLocalX = -wBase / 2f
@@ -1865,68 +1943,120 @@ fun GameCanvas(
                 }
             }
 
-            // DRAW COOL DRIVER HELMET inside cabin area
-            drawCircle(
-                color = Color(0xFF334155), // Driver coat
-                radius = 7f,
-                center = Offset(screenCarX - 2f, screenCarY - 18f)
-            )
-            drawCircle(
-                color = Color(0xFFD0BCFF), // Immersive Lavender helmet
-                radius = 9f,
-                center = Offset(screenCarX - 2f, screenCarY - 26f)
-            )
-            // Helmet visor
-            drawRect(
-                color = Color.Black,
-                topLeft = Offset(screenCarX + 1f, screenCarY - 28f),
-                size = Size(6f, 4f)
-            )
+            // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
+            if (activeTrack == MusicTrack.THE_LAST_RIDE) {
+                // 1. Driver coat (Kurta style red jacket)
+                drawCircle(
+                    color = Color(0xFFDC2626),
+                    radius = 8f,
+                    center = Offset(screenCarX - 2f, screenCarY - 17f)
+                )
+                
+                // 2. Full Black Beard (Underlay)
+                drawCircle(
+                    color = Color(0xFF0F172A),
+                    radius = 9.5f,
+                    center = Offset(screenCarX - 2f, screenCarY - 24f)
+                )
+                
+                // 3. Face Skin core
+                drawCircle(
+                    color = Color(0xFFFDBA74),
+                    radius = 7.5f,
+                    center = Offset(screenCarX - 2f, screenCarY - 26f)
+                )
+                
+                // 4. Hair backing
+                drawCircle(
+                    color = Color(0xFF0F172A),
+                    radius = 3.5f,
+                    center = Offset(screenCarX - 8f, screenCarY - 26f)
+                )
 
-            // ----------------------------------------------------
-            // DRAW REAL STICKER OF SIDHU MOOSEWALA ON CAR BODY
-            // ----------------------------------------------------
-            val sWidth = when (vehicle.id) {
-                "Buggy" -> 22f
-                "MonsterTruck" -> 36f
-                else -> 28f
-            }
-            val sHeight = when (vehicle.id) {
-                "Buggy" -> 14f
-                "MonsterTruck" -> 24f
-                else -> 18f
-            }
-            val sOffsetX = when (vehicle.id) {
-                "Buggy" -> screenCarX - 24f
-                "MonsterTruck" -> screenCarX - 18f
-                else -> screenCarX - 22f
-            }
-            val sOffsetY = when (vehicle.id) {
-                "Buggy" -> screenCarY - 13f
-                "MonsterTruck" -> screenCarY - 32f
-                else -> screenCarY - 15f
+                // 5. Signature majestic curled mustache (Mooch)
+                val rightMustache = Path().apply {
+                    moveTo(screenCarX - 2f, screenCarY - 24.5f)
+                    quadraticTo(screenCarX + 3f, screenCarY - 24.5f, screenCarX + 5f, screenCarY - 27f)
+                }
+                drawPath(
+                    path = rightMustache,
+                    color = Color(0xFF0F172A),
+                    style = Stroke(width = 2.2f, cap = StrokeCap.Round)
+                )
+                val leftMustache = Path().apply {
+                    moveTo(screenCarX - 2f, screenCarY - 24.5f)
+                    quadraticTo(screenCarX - 6f, screenCarY - 24.5f, screenCarX - 8f, screenCarY - 27f)
+                }
+                drawPath(
+                    path = leftMustache,
+                    color = Color(0xFF0F172A),
+                    style = Stroke(width = 2.2f, cap = StrokeCap.Round)
+                )
+
+                // 6. Styled Black Sunglasses (Aviators)
+                drawCircle(
+                    color = Color(0xFF000000),
+                    radius = 2.5f,
+                    center = Offset(screenCarX - 1.5f, screenCarY - 28f)
+                )
+                drawCircle(
+                    color = Color(0xFF000000),
+                    radius = 2.5f,
+                    center = Offset(screenCarX + 2.5f, screenCarY - 28f)
+                )
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(screenCarX - 4f, screenCarY - 28f),
+                    end = Offset(screenCarX + 4f, screenCarY - 28f),
+                    strokeWidth = 1.2f
+                )
+
+                // 7. Sikh Turban (Dastar) in rich Saffron Kesari color
+                val turbanColor = Color(0xFFEA580C)
+                val shadowTurban = Color(0xFFC2410C)
+                
+                drawOval(
+                    color = turbanColor,
+                    topLeft = Offset(screenCarX - 12f, screenCarY - 35f),
+                    size = Size(20f, 9f)
+                )
+                drawOval(
+                    color = shadowTurban,
+                    topLeft = Offset(screenCarX - 10f, screenCarY - 37f),
+                    size = Size(18f, 9f)
+                )
+                drawOval(
+                    color = turbanColor,
+                    topLeft = Offset(screenCarX - 7f, screenCarY - 40f),
+                    size = Size(14f, 8f)
+                )
+                val peakPath = Path().apply {
+                    moveTo(screenCarX - 3f, screenCarY - 40f)
+                    lineTo(screenCarX - 1f, screenCarY - 43f)
+                    lineTo(screenCarX + 2f, screenCarY - 40f)
+                    close()
+                }
+                drawPath(peakPath, turbanColor)
+
+            } else {
+                // DEFAULT HELMET CHARACTER
+                drawCircle(
+                    color = Color(0xFF334155), // Driver coat
+                    radius = 7f,
+                    center = Offset(screenCarX - 2f, screenCarY - 18f)
+                )
+                drawCircle(
+                    color = Color(0xFFD0BCFF), // Immersive Lavender helmet
+                    radius = 9f,
+                    center = Offset(screenCarX - 2f, screenCarY - 26f)
+                )
+                drawRect(
+                    color = Color.Black,
+                    topLeft = Offset(screenCarX + 1f, screenCarY - 28f),
+                    size = Size(6f, 4f)
+                )
             }
 
-            // Draw thick decorative vintage gold frame
-            drawRoundRect(
-                color = Color(0xFFFFD700), // Pure Gold
-                topLeft = Offset(sOffsetX - 1.5f, sOffsetY - 1.5f),
-                size = Size(sWidth + 3f, sHeight + 3f),
-                cornerRadius = CornerRadius(2f)
-            )
-            // Draw real Sidhu Moosewala image inside the frame!
-            drawImage(
-                image = sidhuBitmap,
-                dstOffset = IntOffset(sOffsetX.toInt(), sOffsetY.toInt()),
-                dstSize = IntSize(sWidth.toInt(), sHeight.toInt())
-            )
-            // Draw a subtle dark border around the picture
-            drawRoundRect(
-                color = Color.Black.copy(alpha = 0.5f),
-                topLeft = Offset(sOffsetX, sOffsetY),
-                size = Size(sWidth, sHeight),
-                style = Stroke(width = 1f)
-            )
         }
 
         // DRAW ROTATING WHEELS at true world position
@@ -1948,51 +2078,87 @@ fun GameCanvas(
 
         // Rear tire
         rotate(degrees = Math.toDegrees(gameState.rearWheelAngle.toDouble()).toFloat(), pivot = Offset(screenRearX, screenRearY)) {
-            // Tire body
+            // Tire outer rubber body (Charcoal Slate Black)
             drawCircle(
-                color = Color(0xFF1E293B), // Dark rubber gray
+                color = Color(0xFF0F172A), 
                 radius = rad,
                 center = Offset(screenRearX, screenRearY)
             )
-            // Wheel Rim
-            drawCircle(
-                color = Color(0xFFD0BCFF), // Theme purple rim
-                radius = rad * 0.55f,
-                center = Offset(screenRearX, screenRearY)
-            )
-            // Draw 4 tire tread lines for rotating animation visibility
-            for (i in 0..3) {
-                val spokeAngle = (i * PI / 2f).toFloat()
-                drawLine(
-                    color = Color.Black,
-                    start = Offset(screenRearX, screenRearY),
-                    end = Offset(screenRearX + rad * cos(spokeAngle), screenRearY + rad * sin(spokeAngle)),
-                    strokeWidth = 3.5f
-                )
-            }
-        }
-
-        // Front tire
-        rotate(degrees = Math.toDegrees(gameState.frontWheelAngle.toDouble()).toFloat(), pivot = Offset(screenFrontX, screenFrontY)) {
+            // Tire inner bead lock
             drawCircle(
                 color = Color(0xFF1E293B),
+                radius = rad * 0.85f,
+                center = Offset(screenRearX, screenRearY)
+            )
+            // Metallic Silver Chromium Rim
+            drawCircle(
+                color = Color(0xFF94A3B8), // slate silver rim center
+                radius = rad * 0.62f,
+                center = Offset(screenRearX, screenRearY)
+            )
+            drawCircle(
+                color = Color(0xFFE2E8F0), // inner bright chrome ring
+                radius = rad * 0.52f,
+                center = Offset(screenRearX, screenRearY)
+            )
+            // 6 sporty radial steel spokes
+            for (i in 0..5) {
+                val spokeAngle = (i * PI / 3f).toFloat()
+                drawLine(
+                    color = Color.White,
+                    start = Offset(screenRearX, screenRearY),
+                    end = Offset(screenRearX + rad * 0.58f * cos(spokeAngle), screenRearY + rad * 0.58f * sin(spokeAngle)),
+                    strokeWidth = 2.5f
+                )
+            }
+            // Center axle cap
+            drawCircle(
+                color = Color(0xFF0F172A),
+                radius = rad * 0.16f,
+                center = Offset(screenRearX, screenRearY)
+            )
+        }
+
+        // Front tire (matching realistic styling)
+        rotate(degrees = Math.toDegrees(gameState.frontWheelAngle.toDouble()).toFloat(), pivot = Offset(screenFrontX, screenFrontY)) {
+            // Tire outer rubber body
+            drawCircle(
+                color = Color(0xFF0F172A),
                 radius = rad,
                 center = Offset(screenFrontX, screenFrontY)
             )
             drawCircle(
-                color = Color(0xFFD0BCFF), // Theme purple rim
-                radius = rad * 0.55f,
+                color = Color(0xFF1E293B),
+                radius = rad * 0.85f,
                 center = Offset(screenFrontX, screenFrontY)
             )
-            for (i in 0..3) {
-                val spokeAngle = (i * PI / 2f).toFloat()
+            // Metallic Silver Chromium Rim
+            drawCircle(
+                color = Color(0xFF94A3B8),
+                radius = rad * 0.62f,
+                center = Offset(screenFrontX, screenFrontY)
+            )
+            drawCircle(
+                color = Color(0xFFE2E8F0),
+                radius = rad * 0.52f,
+                center = Offset(screenFrontX, screenFrontY)
+            )
+            // 6 sporty radial steel spokes
+            for (i in 0..5) {
+                val spokeAngle = (i * PI / 3f).toFloat()
                 drawLine(
-                    color = Color.Black,
+                    color = Color.White,
                     start = Offset(screenFrontX, screenFrontY),
-                    end = Offset(screenFrontX + rad * cos(spokeAngle), screenFrontY + rad * sin(spokeAngle)),
-                    strokeWidth = 3.5f
+                    end = Offset(screenFrontX + rad * 0.58f * cos(spokeAngle), screenFrontY + rad * 0.58f * sin(spokeAngle)),
+                    strokeWidth = 2.5f
                 )
             }
+            // Center axle cap
+            drawCircle(
+                color = Color(0xFF0F172A),
+                radius = rad * 0.16f,
+                center = Offset(screenFrontX, screenFrontY)
+            )
         }
     }
 }
@@ -2006,4 +2172,113 @@ private inline fun toScreenX(worldX: Float, gameCarX: Float, cameraScreenX: Floa
 // Inline support for safe horizontal bounds ground points calculations
 private inline fun toScreenY(worldY: Float, gameCarY: Float, cameraScreenY: Float): Float {
     return cameraScreenY - (worldY - gameCarY)
+}
+
+@Composable
+fun DashboardRadioPlayer(
+    activeTrack: MusicTrack,
+    isRadioOn: Boolean,
+    onRadioToggle: () -> Unit,
+    onStationChange: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xDD111015)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .border(1.2.dp, Color(0xFFD4AF37).copy(alpha = 0.8f), RoundedCornerShape(12.dp)) // Royal golden board accent
+            .shadow(6.dp, RoundedCornerShape(12.dp))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Power settings toggle dial
+            IconButton(
+                onClick = onRadioToggle,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(
+                        if (isRadioOn) Color(0xFFDC2626) else Color(0xFF4B5563),
+                        CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PowerSettingsNew,
+                    contentDescription = "Radio Power Toggle",
+                    tint = Color.White,
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+
+            // LCD Tuner Display Core panel
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier
+                    .width(185.dp)
+                    .height(24.dp)
+                    .border(0.5.dp, Color(0xFF334155), RoundedCornerShape(4.dp))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Radio,
+                            contentDescription = "Radio Active Icon",
+                            tint = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF64748B),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = if (isRadioOn) {
+                                if (activeTrack == MusicTrack.THE_LAST_RIDE) "📻 SIDHU FM 94.4" else "📻 PUNJABI FM 101"
+                            } else {
+                                "📻 RADIO CLOSED"
+                            },
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF64748B), // Saffron gold when active
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    // Playing / off signal display
+                    Text(
+                        text = if (isRadioOn) "PLAYING" else "STANDBY",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isRadioOn) Color(0xFF22C55E) else Color(0xFFEF4444)
+                    )
+                }
+            }
+
+            // Next Station / Tune button
+            IconButton(
+                onClick = onStationChange,
+                enabled = isRadioOn,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(
+                        if (isRadioOn) Color(0xFF16A34A) else Color(0xFF374151),
+                        CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipNext,
+                    contentDescription = "Next Station Tune",
+                    tint = if (isRadioOn) Color.White else Color(0xFF9CA3AF),
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+        }
+    }
 }
