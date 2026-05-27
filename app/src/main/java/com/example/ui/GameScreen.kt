@@ -69,21 +69,27 @@ fun GameScreen(
     var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
     var isRadioOn by remember { mutableStateOf(true) }
 
-    // Dynamic background/radio music master controller (Lobby is always ON, gameplay respects radio toggle)
-    LaunchedEffect(gameState.gameActive, activeTrack, isRadioOn) {
-        if (!gameState.gameActive) {
-            LobbyMusicPlayer.setTrackAndRestart(activeTrack)
-        } else {
-            if (isRadioOn) {
-                LobbyMusicPlayer.setTrackAndRestart(activeTrack)
-            } else {
-                LobbyMusicPlayer.stop()
+    // Lifecycle-aware background/radio music master controller (Stops active synth audio when app is closed / backgrounded)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, gameState.gameActive, activeTrack, isRadioOn) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                    if (!gameState.gameActive) {
+                        LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+                    } else if (isRadioOn) {
+                        LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+                    }
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
+                    LobbyMusicPlayer.stop()
+                }
+                else -> {}
             }
         }
-    }
-
-    DisposableEffect(Unit) {
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             LobbyMusicPlayer.stop()
         }
     }
@@ -555,7 +561,9 @@ fun VehicleSelectionCard(
                         when (vehicle.id) {
                             "Buggy" -> Color(0xFFEF4444) // Red Buggy
                             "MonsterTruck" -> Color(0xFFF59E0B) // Yellow Truck
-                            else -> Color(0xFF3B82F6) // Blue Sports Car
+                            "Bullet" -> Color(0xFF1E293B) // Dark Black Bullet
+                            "Splendor" -> Color(0xFF06B6D4) // Cyan Splendor
+                            else -> Color(0xFF2563EB) // Blue Sports Car
                         },
                         shape = CircleShape
                     ),
@@ -565,6 +573,8 @@ fun VehicleSelectionCard(
                     imageVector = when (vehicle.id) {
                         "Buggy" -> Icons.Default.DirectionsCar
                         "MonsterTruck" -> Icons.Default.Agriculture
+                        "Bullet" -> Icons.Default.DirectionsBike
+                        "Splendor" -> Icons.Default.DirectionsBike
                         else -> Icons.Default.ElectricCar
                     },
                     contentDescription = null,
@@ -1099,6 +1109,19 @@ fun ActiveGameplayScreen(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Beautiful Retro Interactive Dashboard Radio
+                    DashboardRadioPlayer(
+                        activeTrack = activeTrack,
+                        isRadioOn = isRadioOn,
+                        onRadioToggle = onRadioToggle,
+                        onStationChange = {
+                            val nextTrack = if (activeTrack == MusicTrack.THE_LAST_RIDE) MusicTrack.OLD_SKOOL else MusicTrack.THE_LAST_RIDE
+                            onTrackSelected(nextTrack)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
                     // Coins Wallet Badge
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
@@ -1158,20 +1181,6 @@ fun ActiveGameplayScreen(
                     }
                 }
             }
-
-            // Beautiful Retro Interactive Dashboard Radio
-            DashboardRadioPlayer(
-                activeTrack = activeTrack,
-                isRadioOn = isRadioOn,
-                onRadioToggle = onRadioToggle,
-                onStationChange = {
-                    val nextTrack = if (activeTrack == MusicTrack.THE_LAST_RIDE) MusicTrack.OLD_SKOOL else MusicTrack.THE_LAST_RIDE
-                    onTrackSelected(nextTrack)
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 4.dp)
-            )
         }
 
         // Game controls: Floating beautiful, realistic steel-textured pedals on bottom-left and bottom-right corners!
@@ -1912,6 +1921,142 @@ fun GameCanvas(
                     // Exhaust stack blowing smoke!
                     drawLine(Color(0xFF94A3B8), start = Offset(screenCarX - 35f, screenCarY - 36f), end = Offset(screenCarX - 35f, screenCarY - 56f), strokeWidth = 5f)
                 }
+                "Bullet" -> {
+                    // Bullet - Classic solid glossy cruiser body
+                    // Massive blocky engine/crankcase in the middle (silver metallic)
+                    drawRoundRect(
+                        color = Color(0xFF64748B),
+                        topLeft = Offset(screenCarX - 15f, screenCarY - 10f),
+                        size = Size(32f, 15f),
+                        cornerRadius = CornerRadius(2f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF94A3B8),
+                        radius = 8f,
+                        center = Offset(screenCarX + 2f, screenCarY - 2f)
+                    )
+                    // Signature black teardrop Royal Fuel Tank with a gold badge
+                    val fuelTank = Path().apply {
+                        moveTo(screenCarX - 18f, screenCarY - 14f)
+                        quadraticTo(screenCarX - 10f, screenCarY - 26f, screenCarX + 12f, screenCarY - 22f)
+                        lineTo(screenCarX + 12f, screenCarY - 13f)
+                        quadraticTo(screenCarX - 4f, screenCarY - 10f, screenCarX - 18f, screenCarY - 14f)
+                        close()
+                    }
+                    drawPath(fuelTank, Color(0xFF0F172A)) // Shiny pitch black
+                    drawPath(fuelTank, Color(0xFFDFB600), style = Stroke(width = 1.2f)) // Royal gold coachline stripes
+
+                    // Metallic golden side-panel monogram
+                    drawCircle(Color(0xFFDFB600), radius = 3.5f, center = Offset(screenCarX - 4f, screenCarY - 16f))
+
+                    // Front fork support + High chrome retro handlebars
+                    drawLine(
+                        color = Color(0xFFCBD5E1),
+                        start = Offset(screenCarX + 12f, screenCarY - 16f),
+                        end = Offset(screenCarX + 26f, screenCarY - 36f),
+                        strokeWidth = 3.5f
+                    )
+                    drawLine(
+                        color = Color(0xFFE2E8F0),
+                        start = Offset(screenCarX + 23f, screenCarY - 33f),
+                        end = Offset(screenCarX + 16f, screenCarY - 35f), // Swept back cruiser handlebar grip
+                        strokeWidth = 3f,
+                        cap = StrokeCap.Round
+                    )
+                    
+                    // Heavy rear chrome exhaust pipe with classic straight outline
+                    drawLine(
+                        color = Color(0xFFCBD5E1),
+                        start = Offset(screenCarX - 22f, screenCarY - 2f),
+                        end = Offset(screenCarX + 8f, screenCarY - 2f),
+                        strokeWidth = 3.8f,
+                        cap = StrokeCap.Round
+                    )
+                    // Cozy brown stitched single saddle leather seat
+                    drawRoundRect(
+                        color = Color(0xFF78350F), // Dark leather brown
+                        topLeft = Offset(screenCarX - 25f, screenCarY - 18f),
+                        size = Size(18f, 6f),
+                        cornerRadius = CornerRadius(2f)
+                    )
+                }
+                "Splendor" -> {
+                    // Splendor - Commuter cruiser bike
+                    // Thin simple commuter engine block
+                    drawRect(
+                        color = Color(0xFF475569),
+                        topLeft = Offset(screenCarX - 10f, screenCarY - 8f),
+                        size = Size(20f, 13f)
+                    )
+                    // Sleek rectangular black commuter fuel tank with cyan decals
+                    val splendorTank = Path().apply {
+                        moveTo(screenCarX - 20f, screenCarY - 11f)
+                        lineTo(screenCarX - 12f, screenCarY - 20f)
+                        lineTo(screenCarX + 10f, screenCarY - 18f)
+                        lineTo(screenCarX + 10f, screenCarY - 10f)
+                        lineTo(screenCarX - 20f, screenCarY - 10f)
+                        close()
+                    }
+                    drawPath(splendorTank, Color(0xFF1E293B))
+                    drawPath(splendorTank, Color(0xFF06B6D4), style = Stroke(width = 1.5f)) // Iconic cyan/blue stripes
+
+                    // Comfortable long flat black seat (commuter double seat)
+                    drawRoundRect(
+                        color = Color(0xFF0F172A),
+                        topLeft = Offset(screenCarX - 26f, screenCarY - 15f),
+                        size = Size(20f, 5f),
+                        cornerRadius = CornerRadius(1.5f)
+                    )
+                    
+                    // Rear black metal carrier rack (Splendor's most iconic utility)
+                    drawLine(
+                        color = Color(0xFF000000),
+                        start = Offset(screenCarX - 26f, screenCarY - 13f),
+                        end = Offset(screenCarX - 34f, screenCarY - 13f),
+                        strokeWidth = 2.5f
+                    )
+                    drawLine(
+                        color = Color(0xFF000000),
+                        start = Offset(screenCarX - 32f, screenCarY - 13f),
+                        end = Offset(screenCarX - 28f, screenCarY - 6f),
+                        strokeWidth = 2f
+                    )
+
+                    // Front sporty commuter headlight cowl
+                    val headlightCowl = Path().apply {
+                        moveTo(screenCarX + 10f, screenCarY - 14f)
+                        lineTo(screenCarX + 22f, screenCarY - 22f)
+                        lineTo(screenCarX + 20f, screenCarY - 10f)
+                        close()
+                    }
+                    drawPath(headlightCowl, Color(0xFF1E293B))
+                    // Bright halogen headlight beam
+                    drawRect(Color(0xFFFEF08A), topLeft = Offset(screenCarX + 20f, screenCarY - 19f), size = Size(3f, 4f))
+
+                    // Handlebars and fork links
+                    drawLine(
+                        color = Color(0xFF475569),
+                        start = Offset(screenCarX + 12f, screenCarY - 14f),
+                        end = Offset(screenCarX + 18f, screenCarY - 28f),
+                        strokeWidth = 3f
+                    )
+                    drawLine(
+                        color = Color(0xFF94A3B8),
+                        start = Offset(screenCarX + 16f, screenCarY - 26f),
+                        end = Offset(screenCarX + 10f, screenCarY - 26f),
+                        strokeWidth = 2.2f,
+                        cap = StrokeCap.Round
+                    )
+                    
+                    // Slanted chrome exhaust silencer
+                    drawLine(
+                        color = Color(0xFFE2E8F0),
+                        start = Offset(screenCarX - 24f, screenCarY),
+                        end = Offset(screenCarX + 4f, screenCarY - 4f),
+                        strokeWidth = 3f,
+                        cap = StrokeCap.Round
+                    )
+                }
                 "SportsRacer" -> {
                     // Blue aero sports shell, very low
                     // Low carbon fiber chassis
@@ -1944,7 +2089,7 @@ fun GameCanvas(
             }
 
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
-            if (activeTrack == MusicTrack.THE_LAST_RIDE) {
+            if (activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL) {
                 // 1. Driver coat (Kurta style red jacket)
                 drawCircle(
                     color = Color(0xFFDC2626),
@@ -2183,22 +2328,22 @@ fun DashboardRadioPlayer(
     modifier: Modifier = Modifier
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xDD111015)),
-        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xEE0E0D12)),
+        shape = RoundedCornerShape(8.dp),
         modifier = modifier
-            .border(1.2.dp, Color(0xFFD4AF37).copy(alpha = 0.8f), RoundedCornerShape(12.dp)) // Royal golden board accent
-            .shadow(6.dp, RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0xFFD4AF37).copy(alpha = 0.7f), RoundedCornerShape(8.dp)) // Royal golden accent
+            .shadow(4.dp, RoundedCornerShape(8.dp))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Power settings toggle dial
+            // Power settings toggle
             IconButton(
                 onClick = onRadioToggle,
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(20.dp)
                     .background(
                         if (isRadioOn) Color(0xFFDC2626) else Color(0xFF4B5563),
                         CircleShape
@@ -2206,55 +2351,53 @@ fun DashboardRadioPlayer(
             ) {
                 Icon(
                     imageVector = Icons.Default.PowerSettingsNew,
-                    contentDescription = "Radio Power Toggle",
+                    contentDescription = "Power",
                     tint = Color.White,
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(10.dp)
                 )
             }
 
-            // LCD Tuner Display Core panel
+            // LCD Tuner Display - compact card
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                shape = RoundedCornerShape(4.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF020617)),
+                shape = RoundedCornerShape(3.dp),
                 modifier = Modifier
-                    .width(185.dp)
-                    .height(24.dp)
-                    .border(0.5.dp, Color(0xFF334155), RoundedCornerShape(4.dp))
+                    .width(130.dp)
+                    .height(18.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 6.dp),
+                        .padding(horizontal = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Radio,
-                            contentDescription = "Radio Active Icon",
+                            contentDescription = null,
                             tint = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF64748B),
-                            modifier = Modifier.size(11.dp)
+                            modifier = Modifier.size(9.dp)
                         )
                         Text(
                             text = if (isRadioOn) {
-                                if (activeTrack == MusicTrack.THE_LAST_RIDE) "📻 SIDHU FM 94.4" else "📻 PUNJABI FM 101"
+                                if (activeTrack == MusicTrack.THE_LAST_RIDE) "SIDHU FM 94.4" else "PUNJABI 101"
                             } else {
-                                "📻 RADIO CLOSED"
+                                "STANDBY"
                             },
-                            fontSize = 8.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF64748B), // Saffron gold when active
-                            letterSpacing = 0.5.sp
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF64748B),
+                            letterSpacing = 0.2.sp
                         )
                     }
 
-                    // Playing / off signal display
                     Text(
-                        text = if (isRadioOn) "PLAYING" else "STANDBY",
-                        fontSize = 8.sp,
+                        text = if (isRadioOn) "ON" else "OFF",
+                        fontSize = 6.sp,
                         fontWeight = FontWeight.Black,
                         color = if (isRadioOn) Color(0xFF22C55E) else Color(0xFFEF4444)
                     )
@@ -2266,7 +2409,7 @@ fun DashboardRadioPlayer(
                 onClick = onStationChange,
                 enabled = isRadioOn,
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(20.dp)
                     .background(
                         if (isRadioOn) Color(0xFF16A34A) else Color(0xFF374151),
                         CircleShape
@@ -2274,9 +2417,9 @@ fun DashboardRadioPlayer(
             ) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
-                    contentDescription = "Next Station Tune",
+                    contentDescription = "Next Station",
                     tint = if (isRadioOn) Color.White else Color(0xFF9CA3AF),
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(11.dp)
                 )
             }
         }

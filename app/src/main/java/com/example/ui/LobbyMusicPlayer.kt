@@ -149,12 +149,22 @@ object LobbyMusicPlayer {
                         val isKickTime = (noteIndex % 4 == 0)
                         val beatEnvelope = if (isKickTime) {
                             val progress = i.toDouble() / samplesPerNote
-                            Math.exp(-8.0 * progress) * 0.4 // Quick deep punchy kick
+                            kotlin.math.exp(-8.0 * progress) * 0.4 // Quick deep punchy kick
                         } else {
                             0.08 // soft rumble backdrop
                         }
 
                         sampleVal += bassWave * beatEnvelope
+
+                        // 3. Synthesize punchy retro snare backbeat on off-beats (decaying white noise)
+                        val isSnareTime = (noteIndex % 4 == 2)
+                        if (isSnareTime) {
+                            val progress = i.toDouble() / samplesPerNote
+                            val snareEnvelope = kotlin.math.exp(-12.0 * progress) * 0.16
+                            // Lightning fast deterministic LCG pseudo-random noise generator
+                            val noise = (((i * 1103515245) + 12345) and 0xFFFF).toDouble() / 65536.0 * 2.0 - 1.0
+                            sampleVal += noise * snareEnvelope
+                        }
 
                         // Clamp value inside valid short ranges
                         val scaled = (sampleVal * 32767.0).coerceIn(-32768.0, 32767.0)

@@ -33,8 +33,10 @@ enum class VehicleType(
     val unlockCost: Int
 ) {
     BUGGY("Buggy", "Dune Buggy", "Light and agile, flips fast in mid-air.", 1.0f, 320f, 1.0f, 1.0f, 85f, 32f, 18f, 0),
-    MONSTER_TRUCK("MonsterTruck", "Monster Truck", "Heavy, giant tires, and deep bouncy suspension.", 1.5f, 440f, 1.3f, 1.4f, 100f, 45f, 26f, 1500),
-    SPORTS_RACER("SportsRacer", "Sports Racer", "Low center of gravity, ultra-fast engine.", 0.9f, 520f, 1.5f, 0.7f, 90f, 22f, 16f, 3000)
+    MONSTER_TRUCK("MonsterTruck", "Monster Truck", "Heavy, giant tires, and deep bouncy suspension.", 1.5f, 440f, 1.3f, 1.4f, 100f, 45f, 26f, 1200),
+    BULLET("Bullet", "Royal Bullet", "Heavy legendary cruiser, iconic retro thump sound & high mass.", 1.25f, 385f, 1.25f, 1.1f, 75f, 28f, 17f, 2000),
+    SPLENDOR("Splendor", "Desi Splendor", "Highly fuel efficient, the ultimate daily commuter bike.", 0.85f, 345f, 1.05f, 0.95f, 65f, 26f, 14f, 3000),
+    SPORTS_RACER("SportsRacer", "Sports Racer", "Low center of gravity, ultra-fast racing engine.", 0.9f, 520f, 1.5f, 0.7f, 90f, 22f, 16f, 5000)
 }
 
 data class Particle(
@@ -231,7 +233,7 @@ class GameViewModel(
     }
 
     // Physics constants
-    private val gravity = -350f // pixels per sec^2
+    private val gravity = -420f // pixels per sec^2
     private val airResistanceX = 0.05f
     private val airResistanceAngular = 1.5f
 
@@ -396,6 +398,11 @@ class GameViewModel(
 
         if (anyGroundContact) {
             val hillAngle = atan2(frontGroundY - rearGroundY, frontX - rearX)
+            
+            // Dynamic slope gravity physics (uphill deceleration and downhill force)
+            val slopeGravityStrength = gravity * sin(hillAngle)
+            vx += slopeGravityStrength * cos(hillAngle) * dt
+            vy += slopeGravityStrength * sin(hillAngle) * dt
             
             // Smoothed stabilization: align car representation with hill slope gently
             val angleError = hillAngle - mAngle
@@ -666,7 +673,7 @@ class GameViewModel(
                 val dist = sqrt(dx*dx + dy*dy)
                 if (dist <= collRadius) {
                     collectedCoinIds.add(idx)
-                    coinsAwarded++
+                    coinsAwarded += 5
                     spawnPickupSplash(coinX, coinY, 0xFFFFD700, particlesList) // Golden flash
                 }
             }
