@@ -7,7 +7,8 @@ import kotlinx.coroutines.*
 
 enum class MusicTrack {
     OLD_SKOOL,
-    THE_LAST_RIDE
+    THE_LAST_RIDE,
+    SIDHU_MOOSEWALA
 }
 
 object LobbyMusicPlayer {
@@ -28,6 +29,7 @@ object LobbyMusicPlayer {
         val streamUrl = when (currentTrack) {
             MusicTrack.OLD_SKOOL -> "https://archive.org/download/sidhu-moose-wala-all-songs/Old%20Skool.mp3"
             MusicTrack.THE_LAST_RIDE -> "https://archive.org/download/sidhu-moose-wala-all-songs/The%20Last%20Ride.mp3"
+            MusicTrack.SIDHU_MOOSEWALA -> "https://docs.google.com/uc?export=download&id=16llwWvDDdCZ2GBwWlirBFMlpUVMpHLKB"
         }
 
         // Start online MediaPlayer stream.

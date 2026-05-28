@@ -226,7 +226,7 @@ class GameViewModel(
                 it.copy(
                     nitroCharges = updatedCharges,
                     isNitroActive = true,
-                    nitroActiveTimeRemaining = 1.6f
+                    nitroActiveTimeRemaining = 4.0f
                 )
             }
             _nitroCharges.value = updatedCharges
@@ -246,7 +246,7 @@ class GameViewModel(
             _gameState.update {
                 it.copy(
                     isNitroActive = true,
-                    nitroActiveTimeRemaining = 1.6f
+                    nitroActiveTimeRemaining = 4.0f
                 )
             }
         }
@@ -440,9 +440,9 @@ class GameViewModel(
 
         // Apply Nitro Boost thrust force along car's orientation
         if (newIsNitroActive) {
-            val nitroForce = 2100f // powerful boost
+            val nitroForce = 900f // capped power boost (balanced and smooth)
             vx += nitroForce * cos(mAngle) * dt / vehicle.baseMass
-            vy += (nitroForce * sin(mAngle) + 120f) * dt / vehicle.baseMass // provides some upward lift
+            vy += (nitroForce * sin(mAngle) + 40f) * dt / vehicle.baseMass // gentle lift
         }
 
         // Shocks parameters

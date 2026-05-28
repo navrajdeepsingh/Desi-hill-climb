@@ -106,11 +106,12 @@ fun GameScreen(
     ) {
         if (!gameState.gameActive) {
             // Sidhu Moosewala theme background decoration (B&W portrait or Cute Infant Son visual)
-            Image(
+             Image(
                 painter = painterResource(
                     id = when (activeTrack) {
                         MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
                         MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
+                        MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
                     }
                 ),
                 contentDescription = "Theme Background",
@@ -119,6 +120,7 @@ fun GameScreen(
                 alpha = when (activeTrack) {
                     MusicTrack.THE_LAST_RIDE -> 0.5f
                     MusicTrack.OLD_SKOOL -> 0.45f
+                    MusicTrack.SIDHU_MOOSEWALA -> 0.55f
                 }
             )
             // Soft overlay to maintain exceptional contrast for readability
@@ -130,6 +132,7 @@ fun GameScreen(
                             alpha = when (activeTrack) {
                                 MusicTrack.THE_LAST_RIDE -> 0.55f
                                 MusicTrack.OLD_SKOOL -> 0.45f
+                                MusicTrack.SIDHU_MOOSEWALA -> 0.50f
                             }
                         )
                     )
@@ -437,6 +440,7 @@ fun GarageTab(
                                     when (activeTrack) {
                                         MusicTrack.THE_LAST_RIDE -> "SIDHU FM — The Last Ride"
                                         MusicTrack.OLD_SKOOL -> "PUNJABI 101 — Old Skool"
+                                        MusicTrack.SIDHU_MOOSEWALA -> "LEGEND FM — Sidhu Moose Wala"
                                     }
                                 } else {
                                     "PRESS POWER TO TUNER"
@@ -461,7 +465,8 @@ fun GarageTab(
                             onClick = {
                                 val nextTrack = when (activeTrack) {
                                     MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
-                                    MusicTrack.THE_LAST_RIDE -> MusicTrack.OLD_SKOOL
+                                    MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
+                                    MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
                                 }
                                 onTrackSelected(nextTrack)
                             },
@@ -1297,7 +1302,8 @@ fun ActiveGameplayScreen(
                         onStationChange = {
                             val nextTrack = when (activeTrack) {
                                 MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
-                                MusicTrack.THE_LAST_RIDE -> MusicTrack.OLD_SKOOL
+                                MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
+                                MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
                             }
                             onTrackSelected(nextTrack)
                         }
@@ -3129,6 +3135,7 @@ fun DashboardRadioPlayer(
                                 when (activeTrack) {
                                     MusicTrack.THE_LAST_RIDE -> "SIDHU FM 94.4"
                                     MusicTrack.OLD_SKOOL -> "PUNJABI 101"
+                                    MusicTrack.SIDHU_MOOSEWALA -> "LEGEND LIVE 5"
                                 }
                             } else {
                                 "STANDBY"
