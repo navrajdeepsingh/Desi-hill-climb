@@ -91,6 +91,18 @@ fun GameScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+
+        // Force-refresh or start music immediately if lifecycle is already resumed (e.g. initial launch and active state transitions)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+            if (!gameState.gameActive) {
+                LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+            } else if (isRadioOn) {
+                LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+            } else {
+                LobbyMusicPlayer.stop()
+            }
+        }
+
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             LobbyMusicPlayer.stop()
@@ -2147,285 +2159,412 @@ fun GameCanvas(
             when (vehicle.id) {
                 "Buggy" -> {
                     // 1. Olive/Military Green Rugged Body Tub
-                    val armyGreenMajor = Color(0xFF4C583E)
-                    val armyGreenShadow = Color(0xFF323B2A)
-                    val armyGreenLight = Color(0xFF677359)
-                    val ironColor = Color(0xFF64748B)       // Winch / bumper / metal
+                    val armyGreenMajor = Color(0xFF5E6B4E) // Exact olive green from picture
+                    val armyGreenShadow = Color(0xFF3D4533) // Darker shadow green for contours
+                    val armyGreenLight = Color(0xFF788764) // Highlight green
+                    val ironColor = Color(0xFF64748B)       // Metal gray for bumper/shocks
                     val triSaffron = Color(0xFFEA580C)      // flag saffron
                     val triGreen = Color(0xFF16A34A)        // flag green
-                    val tireColor = Color(0xFF1E293B)       // tire dark grey
-                    val mudColor = Color(0xFF78350F)        // mud/dirt color accent
 
-                    // Bumper and Front Winch hook
-                    drawRoundRect(
-                        color = Color(0xFF475569),
-                        topLeft = Offset(screenCarX + 46f, screenCarY - 8f),
-                        size = Size(10f, 6f),
-                        cornerRadius = CornerRadius(1f)
-                    )
-                    // Front winch bracket / cable reel
-                    drawCircle(
-                        color = Color.DarkGray,
-                        radius = 4f,
-                        center = Offset(screenCarX + 44f, screenCarY - 5f)
-                    )
-
-                    // A. Rear-mounted spare wheel (on the back wall)
-                    drawCircle(
-                        color = Color.Black,
-                        radius = 18.5f,
-                        center = Offset(screenCarX - 58f, screenCarY - 11f)
-                    )
-                    drawCircle(
-                        color = tireColor,
-                        radius = 14.5f,
-                        center = Offset(screenCarX - 58f, screenCarY - 11f)
-                    )
-                    drawCircle(
-                        color = Color.Black,
-                        radius = 9.5f,
-                        center = Offset(screenCarX - 58f, screenCarY - 11f)
-                    )
-                    drawCircle(
-                        color = Color(0xFF475569), // Steel inner wheel hub
-                        radius = 7f,
-                        center = Offset(screenCarX - 58f, screenCarY - 11f)
-                    )
-                    // Hub bolts
-                    drawCircle(color = Color.White, radius = 1.5f, center = Offset(screenCarX - 58f, screenCarY - 11f))
-                    
-                    // B. Rear Roll Cage Bar / Windshield frame (Sketched high-contrast outlines)
-                    // Roll bar backing up driver
-                    drawLine(
-                        color = Color.Black,
-                        start = Offset(screenCarX - 35f, screenCarY - 14f),
-                        end = Offset(screenCarX - 35f, screenCarY - 39f),
-                        strokeWidth = 6.5f
-                    )
-                    drawLine(
-                        color = ironColor,
-                        start = Offset(screenCarX - 35f, screenCarY - 14f),
-                        end = Offset(screenCarX - 35f, screenCarY - 38f),
-                        strokeWidth = 3.5f
-                    )
-                    drawLine(
-                        color = Color.Black,
-                        start = Offset(screenCarX - 35f, screenCarY - 39f),
-                        end = Offset(screenCarX - 49f, screenCarY - 14f),
-                        strokeWidth = 5.5f
-                    )
-                    drawLine(
-                        color = ironColor,
-                        start = Offset(screenCarX - 35f, screenCarY - 38f),
-                        end = Offset(screenCarX - 48f, screenCarY - 14f),
-                        strokeWidth = 3.0f
-                    )
-                    // Front Windshield Frame (tilted forward slab slightly)
-                    drawLine(
-                        color = Color.Black,
-                        start = Offset(screenCarX + 16.5f, screenCarY - 14.5f),
-                        end = Offset(screenCarX + 11.5f, screenCarY - 39.5f),
-                        strokeWidth = 6.5f
-                    )
-                    drawLine(
-                        color = ironColor,
-                        start = Offset(screenCarX + 16f, screenCarY - 15f),
-                        end = Offset(screenCarX + 12f, screenCarY - 38f),
-                        strokeWidth = 3.5f
-                    )
-                    // Inner windshield glass shading (semi translucent blue/white)
-                    val glassPath = Path().apply {
-                        moveTo(screenCarX + 16f, screenCarY - 15f)
-                        lineTo(screenCarX + 12f, screenCarY - 38f)
-                        lineTo(screenCarX + 15f, screenCarY - 38f)
-                        lineTo(screenCarX + 19f, screenCarY - 15f)
-                        close()
-                    }
-                    drawPath(glassPath, Color(0x7FBAE6FD))
- 
-                    // C. Jerry cans mounted at the rear
-                    // Red jerry can with black outline background
+                    // A. Seats (Driver Seat Cushion and Headrest)
+                    // Driver side back headrest outline and fill
                     drawRoundRect(
                         color = Color.Black,
-                        topLeft = Offset(screenCarX - 49.5f, screenCarY - 25.5f),
-                        size = Size(11f, 16f),
+                        topLeft = Offset(screenCarX - 16f, screenCarY - 33f),
+                        size = Size(8f, 11f),
                         cornerRadius = CornerRadius(3f)
                     )
                     drawRoundRect(
-                        color = Color(0xFF991B1B), // Red jerry can
-                        topLeft = Offset(screenCarX - 48f, screenCarY - 24f),
-                        size = Size(8f, 13f),
+                        color = Color(0xFF3E352F), // Dark brown/charcoal seat
+                        topLeft = Offset(screenCarX - 15f, screenCarY - 32f),
+                        size = Size(6f, 9f),
                         cornerRadius = CornerRadius(2f)
                     )
-                    // Jerry can steel handle & bracket
-                    drawLine(Color.Black, Offset(screenCarX - 46f, screenCarY - 24f), Offset(screenCarX - 46f, screenCarY - 24f), strokeWidth = 1.5f)
-                    drawLine(Color.Black, Offset(screenCarX - 42f, screenCarY - 24f), Offset(screenCarX - 42f, screenCarY - 24f), strokeWidth = 1.5f)
- 
-                    // D. Olive Green Main Cabin & Body Tub with bold outlines
-                    // Bottom main horizontal plate
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenCarX - 12f, screenCarY - 22f),
+                        end = Offset(screenCarX - 12f, screenCarY - 10f),
+                        strokeWidth = 2.5f
+                    )
+                    // Cushion seat back
                     drawRoundRect(
                         color = Color.Black,
-                        topLeft = Offset(screenCarX - 54f, screenCarY - 17f),
-                        size = Size(104f, 19f),
-                        cornerRadius = CornerRadius(4.5f)
+                        topLeft = Offset(screenCarX - 24f, screenCarY - 22f),
+                        size = Size(9f, 21f),
+                        cornerRadius = CornerRadius(4f)
+                    )
+                    drawRoundRect(
+                        color = Color(0xFF3E352F),
+                        topLeft = Offset(screenCarX - 23f, screenCarY - 21f),
+                        size = Size(7f, 19f),
+                        cornerRadius = CornerRadius(3f)
+                    )
+
+                    // B. Drivers Body & Sidhu Style 2D Profile (Side-view)
+                    // Legs (beige/grey pants)
+                    val legPath = Path().apply {
+                        moveTo(screenCarX - 10f, screenCarY - 10f) // Hip
+                        lineTo(screenCarX - 3f, screenCarY - 3f)   // Knee
+                        lineTo(screenCarX + 7f, screenCarY - 3f)   // Foot
+                        lineTo(screenCarX + 7f, screenCarY - 7f)   // Sole
+                        lineTo(screenCarX + 1f, screenCarY - 7f)   // Top calf
+                        lineTo(screenCarX - 6f, screenCarY - 14f)  // Thigh
+                        close()
+                    }
+                    drawPath(legPath, Color(0xFFCBBCA4))
+                    drawPath(legPath, Color.Black, style = Stroke(width = 1.5f))
+
+                    // Torso (Olive matching Kurta / Shirt)
+                    val torsoPath = Path().apply {
+                        moveTo(screenCarX - 15f, screenCarY - 10f) // lower tail
+                        lineTo(screenCarX - 4f, screenCarY - 10f)  // front bottom
+                        lineTo(screenCarX - 3f, screenCarY - 24f)  // front chest
+                        lineTo(screenCarX - 11f, screenCarY - 25f) // shoulder
+                        lineTo(screenCarX - 16f, screenCarY - 15f) // back
+                        close()
+                    }
+                    drawPath(torsoPath, Color(0xFF7E8D62))
+                    drawPath(torsoPath, Color.Black, style = Stroke(width = 1.5f))
+
+                    // Steering Wheel & Steering Column
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenCarX + 4f, screenCarY - 10f),
+                        end = Offset(screenCarX + 1f, screenCarY - 22f),
+                        strokeWidth = 2.5f
+                    )
+                    rotate(degrees = -25f, pivot = Offset(screenCarX + 1f, screenCarY - 22f)) {
+                        drawOval(
+                            color = Color.Black,
+                            topLeft = Offset(screenCarX - 3f, screenCarY - 24f),
+                            size = Size(8f, 4f)
+                        )
+                    }
+
+                    // Sleeve arm extending forward to steering wheel
+                    val armPath = Path().apply {
+                        moveTo(screenCarX - 10f, screenCarY - 24f) // shoulder
+                        lineTo(screenCarX + 2f, screenCarY - 18f)  // hand/wrist
+                        lineTo(screenCarX + 1f, screenCarY - 14f)  // lower wrist
+                        lineTo(screenCarX - 9f, screenCarY - 20f)  // elbow
+                        close()
+                    }
+                    drawPath(armPath, Color(0xFF7E8D62))
+                    drawPath(armPath, Color.Black, style = Stroke(width = 1.5f))
+
+                    // Hand
+                    drawCircle(color = Color(0xFFFDBA74), radius = 2.2f, center = Offset(screenCarX + 2f, screenCarY - 16f))
+                    drawCircle(color = Color.Black, radius = 2.2f, center = Offset(screenCarX + 2f, screenCarY - 16f), style = Stroke(width = 1.2f))
+
+                    // Neck & Head with side profile face and black beard
+                    drawRect(color = Color(0xFFFDBA74), topLeft = Offset(screenCarX - 9f, screenCarY - 28f), size = Size(3.5f, 3.5f))
+                    drawRect(color = Color.Black, topLeft = Offset(screenCarX - 9f, screenCarY - 28f), size = Size(3.5f, 3.5f), style = Stroke(width = 1.2f))
+
+                    // Face shape facing right
+                    val facePath = Path().apply {
+                        moveTo(screenCarX - 8f, screenCarY - 33f)
+                        lineTo(screenCarX - 4f, screenCarY - 33f) // forehead
+                        lineTo(screenCarX - 1.5f, screenCarY - 30.5f) // nose
+                        lineTo(screenCarX - 4f, screenCarY - 29.5f) // chin/mouth
+                        lineTo(screenCarX - 8f, screenCarY - 28f) // jaw
+                        close()
+                    }
+                    drawPath(facePath, Color(0xFFFDBA74))
+                    drawPath(facePath, Color.Black, style = Stroke(width = 1.2f))
+
+                    // Full classic Black Beard (beautiful overlay matching the image)
+                    val beardPath = Path().apply {
+                        moveTo(screenCarX - 8f, screenCarY - 28f)
+                        lineTo(screenCarX - 3.5f, screenCarY - 28f) // chin edge
+                        lineTo(screenCarX - 2.5f, screenCarY - 31f) // mustache start
+                        lineTo(screenCarX - 6f, screenCarY - 32f) // cheek
+                        close()
+                    }
+                    drawPath(beardPath, Color(0xFF0F172A))
+                    drawPath(beardPath, Color.Black, style = Stroke(width = 1.2f))
+
+                    // Turban - Elegant 2D Side Profile folded turban in army green/olive matching the picture
+                    drawOval(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 13f, screenCarY - 40f),
+                        size = Size(10f, 9f)
+                    )
+                    drawOval(
+                        color = Color(0xFF516240),
+                        topLeft = Offset(screenCarX - 12.5f, screenCarY - 39.5f),
+                        size = Size(9f, 8f)
+                    )
+                    val turbanFrontPath = Path().apply {
+                        moveTo(screenCarX - 11f, screenCarY - 40f)
+                        quadraticTo(screenCarX - 5f, screenCarY - 43f, screenCarX - 2f, screenCarY - 37f)
+                        quadraticTo(screenCarX - 5f, screenCarY - 33f, screenCarX - 9f, screenCarY - 34f)
+                        close()
+                    }
+                    drawPath(turbanFrontPath, Color.Black)
+                    drawPath(turbanFrontPath, Color(0xFF435134))
+
+                    val turbanPeakPath = Path().apply {
+                        moveTo(screenCarX - 9f, screenCarY - 41f)
+                        lineTo(screenCarX - 2.5f, screenCarY - 41f)
+                        lineTo(screenCarX - 3.5f, screenCarY - 35f)
+                        close()
+                    }
+                    drawPath(turbanPeakPath, Color.Black)
+                    drawPath(turbanPeakPath, Color(0xFF516240))
+
+
+                    // C. Main Body Tub / Chassis Shell
+                    val bodyPath = Path().apply {
+                        moveTo(screenCarX - 52f, screenCarY - 20f) // Rear corner top
+                        lineTo(screenCarX - 52f, screenCarY - 2f)  // Rear corner bottom
+                        lineTo(screenCarX + 46f, screenCarY - 2f)  // Front bottom corner
+                        lineTo(screenCarX + 46f, screenCarY - 16f) // Front grill top corner
+                        lineTo(screenCarX + 12f, screenCarY - 16f) // Hood top start
+                        lineTo(screenCarX + 10f, screenCarY - 11f) // Cowl top
+                        // Scoop cutout for door
+                        quadraticTo(screenCarX + 8f, screenCarY - 4f, screenCarX + 4f, screenCarY - 4f)
+                        lineTo(screenCarX - 18f, screenCarY - 4f) // Bottom of door scooped line
+                        quadraticTo(screenCarX - 22f, screenCarY - 4f, screenCarX - 24f, screenCarY - 20f) // Rise to rear quarter panels
+                        close()
+                    }
+                    drawPath(bodyPath, armyGreenMajor)
+                    drawPath(bodyPath, Color.Black, style = Stroke(width = 2.5f))
+
+                    // Rear lower quarter shadow board
+                    val shadowBoardPath = Path().apply {
+                        moveTo(screenCarX - 52f, screenCarY - 20f)
+                        lineTo(screenCarX - 52f, screenCarY - 12f)
+                        lineTo(screenCarX - 24f, screenCarY - 12f)
+                        lineTo(screenCarX - 24f, screenCarY - 20f)
+                        close()
+                    }
+                    drawPath(shadowBoardPath, armyGreenShadow)
+                    drawPath(shadowBoardPath, Color.Black, style = Stroke(width = 1.5f))
+
+                    // Saffron/White/Green Tricolor sticker stripe on side body
+                    drawRect(triSaffron, Offset(screenCarX + 14f, screenCarY - 13f), Size(6f, 1.8f))
+                    drawRect(Color.White, Offset(screenCarX + 14f, screenCarY - 11.2f), Size(6f, 1.8f))
+                    drawRect(triGreen, Offset(screenCarX + 14f, screenCarY - 9.4f), Size(6f, 1.8f))
+                    // Draw black borders for sticker stripe
+                    drawRect(Color.Black, Offset(screenCarX + 14f, screenCarY - 13f), Size(6f, 5.4f), style = Stroke(width = 1f))
+
+
+                    // D. Cargo / Jerry cans / Roll cages & Back wall assets (Classic Willie's Profile)
+                    // Rolled Canvas tent
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 31f, screenCarY - 23f),
+                        size = Size(13f, 9f),
+                        cornerRadius = CornerRadius(2.5f)
+                    )
+                    drawRoundRect(
+                        color = Color(0xFF8B5A2B), // Brown cargo sheet
+                        topLeft = Offset(screenCarX - 30f, screenCarY - 22f),
+                        size = Size(11f, 7f),
+                        cornerRadius = CornerRadius(2f)
+                    )
+                    // Tie ropes
+                    drawLine(Color.Black, Offset(screenCarX - 27f, screenCarY - 23f), Offset(screenCarX - 27f, screenCarY - 14f), strokeWidth = 1.2f)
+                    drawLine(Color.Black, Offset(screenCarX - 22f, screenCarY - 23f), Offset(screenCarX - 22f, screenCarY - 14f), strokeWidth = 1.2f)
+
+                    // 2 Overlapping Army Jerry Cans
+                    // Can 1 (Rear, shadow green)
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 45f, screenCarY - 30f),
+                        size = Size(11f, 17f),
+                        cornerRadius = CornerRadius(2f)
+                    )
+                    drawRoundRect(
+                        color = Color(0xFF323B2A),
+                        topLeft = Offset(screenCarX - 44f, screenCarY - 29f),
+                        size = Size(9f, 15f),
+                        cornerRadius = CornerRadius(1.5f)
+                    )
+                    // Can 2 (Foreground, primary green)
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 39f, screenCarY - 26f),
+                        size = Size(11f, 17f),
+                        cornerRadius = CornerRadius(2f)
                     )
                     drawRoundRect(
                         color = armyGreenMajor,
-                        topLeft = Offset(screenCarX - 52f, screenCarY - 15f),
-                        size = Size(100f, 15f), // 100f long, 15f thick
-                        cornerRadius = CornerRadius(2f)
+                        topLeft = Offset(screenCarX - 38f, screenCarY - 25f),
+                        size = Size(9f, 15f),
+                        cornerRadius = CornerRadius(1.5f)
                     )
-                    
-                    // Rear quarter higher wall panel
-                    drawRoundRect(
+                    // Cross X embossing on Jerry can 2
+                    drawLine(Color(0xFF323B2A), Offset(screenCarX - 36f, screenCarY - 23f), Offset(screenCarX - 32f, screenCarY - 12f), strokeWidth = 1.5f)
+                    drawLine(Color(0xFF323B2A), Offset(screenCarX - 32f, screenCarY - 23f), Offset(screenCarX - 36f, screenCarY - 12f), strokeWidth = 1.5f)
+
+                    // Black Cage Roll-bar curve behind driver's head
+                    val barPath = Path().apply {
+                        moveTo(screenCarX - 32f, screenCarY - 10f)
+                        lineTo(screenCarX - 32f, screenCarY - 40f)
+                        quadraticTo(screenCarX - 32f, screenCarY - 43f, screenCarX - 27f, screenCarY - 43f)
+                        lineTo(screenCarX - 4f, screenCarY - 36f)
+                    }
+                    drawPath(barPath, Color.Black, style = Stroke(width = 4.5f, cap = StrokeCap.Round))
+                    drawPath(barPath, Color(0xFF1E293B), style = Stroke(width = 2.5f, cap = StrokeCap.Round))
+
+
+                    // E. Spare Tyre (Mounted vertically on the back tailgate)
+                    val spareY = screenCarY - 12f
+                    val spareX = screenCarX - 58f
+                    drawRoundRect(Color.Black, Offset(spareX - 11f, spareY - 20f), Size(11f, 32f), CornerRadius(4f))
+                    drawRoundRect(Color(0xFF1E293B), Offset(spareX - 9.5f, spareY - 18.5f), Size(8f, 29f), CornerRadius(2.5f))
+                    for (step in 0..6) {
+                        val treadY = spareY - 16f + (step * 5f)
+                        drawLine(Color.Black, Offset(spareX - 11f, treadY), Offset(spareX - 6f, treadY), strokeWidth = 1.8f)
+                    }
+
+
+                    // F. Lettering / Decals on Side Hood "DESI JEEP"
+                    drawContext.canvas.nativeCanvas.apply {
+                        val textPaint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textSize = 8.0f
+                            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            isAntiAlias = true
+                        }
+                        val textOutlinePaint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 8.0f
+                            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 2.0f
+                            isAntiAlias = true
+                        }
+                        drawText("DESI JEEP", screenCarX + 27f, screenCarY - 7f, textOutlinePaint)
+                        drawText("DESI JEEP", screenCarX + 27f, screenCarY - 7f, textPaint)
+                    }
+
+
+                    // G. Windshield Frame (Tilted forward windshield)
+                    drawLine(
                         color = Color.Black,
-                        topLeft = Offset(screenCarX - 54f, screenCarY - 21f),
-                        size = Size(40f, 9f),
-                        cornerRadius = CornerRadius(3f)
+                        start = Offset(screenCarX + 10f, screenCarY - 13f),
+                        end = Offset(screenCarX + 16f, screenCarY - 38f),
+                        strokeWidth = 4.0f
                     )
-                    drawRoundRect(
-                        color = armyGreenShadow,
-                        topLeft = Offset(screenCarX - 52f, screenCarY - 19f),
-                        size = Size(36f, 5f),
-                        cornerRadius = CornerRadius(1f)
+                    drawLine(
+                        color = armyGreenMajor,
+                        start = Offset(screenCarX + 10f, screenCarY - 13f),
+                        end = Offset(screenCarX + 16f, screenCarY - 37f),
+                        strokeWidth = 2.0f
                     )
-                    
-                    // Front hood block (the engine nose)
-                    val hoodPath = Path().apply {
-                        moveTo(screenCarX + 10f, screenCarY - 15f)
-                        lineTo(screenCarX + 14f, screenCarY - 22f)
-                        lineTo(screenCarX + 46f, screenCarY - 22f)
-                        lineTo(screenCarX + 46f, screenCarY)
-                        lineTo(screenCarX + 10f, screenCarY)
+                    val windshieldPath = Path().apply {
+                        moveTo(screenCarX + 11f, screenCarY - 13f)
+                        lineTo(screenCarX + 16f, screenCarY - 36f)
+                        lineTo(screenCarX + 18f, screenCarY - 36f)
+                        lineTo(screenCarX + 13f, screenCarY - 13f)
                         close()
                     }
-                    drawPath(hoodPath, Color.Black)
-                    val innerHoodPath = Path().apply {
-                        moveTo(screenCarX + 11f, screenCarY - 14.5f)
-                        lineTo(screenCarX + 14.5f, screenCarY - 20.5f)
-                        lineTo(screenCarX + 44.5f, screenCarY - 20.5f)
-                        lineTo(screenCarX + 44.5f, screenCarY - 0.5f)
-                        lineTo(screenCarX + 11f, screenCarY - 0.5f)
-                        close()
-                    }
-                    drawPath(innerHoodPath, armyGreenMajor)
-                    // Hood highlight line
+                    drawPath(windshieldPath, Color(0x3D93C5FD))
+
+
+                    // H. Flags (Indian Tricolor Flag on mast & triangular Saffron flag on hood)
+                    // 1. Rear Tricolor
                     drawLine(
-                        color = armyGreenLight,
-                        start = Offset(screenCarX + 14f, screenCarY - 22f),
-                        end = Offset(screenCarX + 46f, screenCarY - 22f),
-                        strokeWidth = 2f
+                        color = Color.Black,
+                        start = Offset(screenCarX - 32f, screenCarY - 14f),
+                        end = Offset(screenCarX - 32f, screenCarY - 58f),
+                        strokeWidth = 3f
                     )
-
-                    // E. Front Grille Vertical Slits & Halogen Headlight
-                    // Grille vertical slits (classic military grill look)
-                    for (i in 0..4) {
-                        val slitX = screenCarX + 34f + (i * 2.5f)
-                        drawLine(
-                            color = Color(0xFF1E293B),
-                            start = Offset(slitX, screenCarY - 15f),
-                            end = Offset(slitX, screenCarY - 2f),
-                            strokeWidth = 1.2f
-                        )
-                    }
-                    // Hood side text label outline or white detailing representing "DESI JEEP" or similar pattern
-                    // Tiny Indian sticker decoration on the hood side
-                    drawRect(triSaffron, Offset(screenCarX + 18f, screenCarY - 14f), Size(8f, 2f))
-                    drawRect(Color.White, Offset(screenCarX + 18f, screenCarY - 12f), Size(8f, 2f))
-                    drawRect(triGreen, Offset(screenCarX + 18f, screenCarY - 10f), Size(8f, 2f))
-
-                    // White "DESI" written representation / clean white sticker line
-                    drawLine(Color.White, Offset(screenCarX + 28f, screenCarY - 11f), Offset(screenCarX + 40f, screenCarY - 11f), strokeWidth = 1.5f)
-
-                    // F. Round Chrome Halogen Headlight
-                    drawCircle(
-                        color = Color.White,
-                        radius = 3.5f,
-                        center = Offset(screenCarX + 44f, screenCarY - 15f)
-                    )
-                    drawCircle(
-                        color = Color(0xFFFEF08A), // bright light core
-                        radius = 2.2f,
-                        center = Offset(screenCarX + 44f, screenCarY - 15f)
-                    )
-
-                    // G. Tricolor National Flag waving on Rear Mast
-                    // Flag Mast pole
                     drawLine(
-                        color = Color(0xFF475569),
-                        start = Offset(screenCarX - 35f, screenCarY - 38f),
-                        end = Offset(screenCarX - 35f, screenCarY - 60f),
-                        strokeWidth = 1.8f
-                    )
-                    // High detail Tricolor waving visual on rear
-                    drawRect(triSaffron, Offset(screenCarX - 47f, screenCarY - 60f), Size(12f, 3.2f))
-                    drawRect(Color.White, Offset(screenCarX - 47f, screenCarY - 56.8f), Size(12f, 3.2f))
-                    drawRect(triGreen, Offset(screenCarX - 47f, screenCarY - 53.6f), Size(12f, 3.2f))
-                    
-                    // Ashok Chakra mini dot
-                    drawCircle(
-                        color = Color(0xFF1E3A8A),
-                        radius = 0.9f,
-                        center = Offset(screenCarX - 41f, screenCarY - 55.2f)
-                    )
-
-                    // H. Triangular saffron/orange flag on the front hood (Mast flagpole)
-                    drawLine(
-                        color = Color(0xFF475569),
-                        start = Offset(screenCarX + 44f, screenCarY - 22f),
-                        end = Offset(screenCarX + 44f, screenCarY - 35f),
+                        color = Color(0xFF94A3B8),
+                        start = Offset(screenCarX - 32f, screenCarY - 14f),
+                        end = Offset(screenCarX - 32f, screenCarY - 57f),
                         strokeWidth = 1.5f
                     )
-                    // Triangle peak path to represent flying saffron triangular flag
-                    val triFlag = Path().apply {
-                        moveTo(screenCarX + 44f, screenCarY - 35f)
-                        lineTo(screenCarX + 34f, screenCarY - 31.5f)
-                        lineTo(screenCarX + 44f, screenCarY - 28f)
-                        close()
-                    }
-                    drawPath(triFlag, triSaffron)
+                    val flagWidth = 18f
+                    val stripeHeight = 4.2f
+                    val flagTopY = screenCarY - 57f
 
-                    // I. Slanted Steering Column and Steering Wheel
+                    // Saffron
+                    drawRect(Color(0xFFEA580C), Offset(screenCarX - 50f, flagTopY), Size(flagWidth, stripeHeight))
+                    drawRect(Color.Black, Offset(screenCarX - 50f, flagTopY), Size(flagWidth, stripeHeight), style = Stroke(width = 1f))
+                    // White
+                    drawRect(Color.White, Offset(screenCarX - 50f, flagTopY + stripeHeight), Size(flagWidth, stripeHeight))
+                    drawRect(Color.Black, Offset(screenCarX - 50f, flagTopY + stripeHeight), Size(flagWidth, stripeHeight), style = Stroke(width = 1f))
+                    // Green
+                    drawRect(Color(0xFF16A34A), Offset(screenCarX - 50f, flagTopY + 2 * stripeHeight), Size(flagWidth, stripeHeight))
+                    drawRect(Color.Black, Offset(screenCarX - 50f, flagTopY + 2 * stripeHeight), Size(flagWidth, stripeHeight), style = Stroke(width = 1f))
+                    // Ashok Chakra navy blue dot
+                    drawCircle(
+                        color = Color(0xFF1E3A8A),
+                        radius = 1.3f,
+                        center = Offset(screenCarX - 41f, flagTopY + 1.5f * stripeHeight)
+                    )
+
+                    // 2. Front triangular saffron flag
                     drawLine(
                         color = Color.Black,
-                        start = Offset(screenCarX + 11f, screenCarY - 14f),
-                        end = Offset(screenCarX - 1f, screenCarY - 24f),
-                        strokeWidth = 1.8f
+                        start = Offset(screenCarX + 44f, screenCarY - 16f),
+                        end = Offset(screenCarX + 44f, screenCarY - 33f),
+                        strokeWidth = 2.5f
                     )
-                    // Steering wheel wheel crown
-                    drawOval(
-                        color = Color(0xFF475569),
-                        topLeft = Offset(screenCarX - 5f, screenCarY - 27f),
-                        size = Size(8f, 4f)
+                    drawLine(
+                        color = Color(0xFF94A3B8),
+                        start = Offset(screenCarX + 44f, screenCarY - 16f),
+                        end = Offset(screenCarX + 44f, screenCarY - 32f),
+                        strokeWidth = 1.2f
+                    )
+                    val saffronFlagPath = Path().apply {
+                        moveTo(screenCarX + 44f, screenCarY - 32f)
+                        lineTo(screenCarX + 32f, screenCarY - 28.5f)
+                        lineTo(screenCarX + 44f, screenCarY - 25f)
+                        close()
+                    }
+                    drawPath(saffronFlagPath, Color.Black)
+                    drawPath(saffronFlagPath, Color(0xFFEA580C))
+
+
+                    // I. Front details: Headlight, Grill, Mud splatters, Winch & Fender arches
+                    // Front halogen headlight
+                    drawCircle(Color.Black, radius = 4f, center = Offset(screenCarX + 43f, screenCarY - 11f))
+                    drawCircle(Color.White, radius = 3.2f, center = Offset(screenCarX + 43f, screenCarY - 11f))
+                    drawCircle(Color(0xFFFEF08A), radius = 2.0f, center = Offset(screenCarX + 43f, screenCarY - 11f))
+
+                    // Front heavy guard winch bumper
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX + 45f, screenCarY - 8f),
+                        size = Size(10f, 6f),
+                        cornerRadius = CornerRadius(1.5f)
+                    )
+                    drawRoundRect(
+                        color = ironColor,
+                        topLeft = Offset(screenCarX + 46f, screenCarY - 7f),
+                        size = Size(8f, 4f),
+                        cornerRadius = CornerRadius(1f)
                     )
 
-                    // J. Rugged Mudguards & mud splats on Lower Body
-                    // Rear fender flare / mudguard
-                    drawArc(
-                        color = Color(0xFF1E293B),
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        topLeft = Offset(screenCarX - 58f, screenCarY - 5f),
-                        size = Size(32f, 14f),
-                        style = Stroke(width = 3.5f)
-                    )
-                    // Front fender flare / mudguard
-                    drawArc(
-                        color = Color(0xFF1E293B),
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        topLeft = Offset(screenCarX + 26f, screenCarY - 5f),
-                        size = Size(32f, 14f),
-                        style = Stroke(width = 3.5f)
-                    )
+                    // Mud splatters decoration (exact 2D paint splats look)
+                    val mudColorVal = Color(0xFF654321)
+                    drawCircle(mudColorVal, radius = 2f, center = Offset(screenCarX - 44f, screenCarY - 4f))
+                    drawCircle(mudColorVal, radius = 3f, center = Offset(screenCarX - 24f, screenCarY - 5f))
+                    drawCircle(mudColorVal, radius = 1.5f, center = Offset(screenCarX - 10f, screenCarY - 4f))
+                    drawCircle(mudColorVal, radius = 4f, center = Offset(screenCarX + 16f, screenCarY - 5f))
+                    drawCircle(mudColorVal, radius = 2.5f, center = Offset(screenCarX + 32f, screenCarY - 6f))
 
-                    // Mud splatters decoration
-                    drawCircle(mudColor, radius = 1.5f, center = Offset(screenCarX - 48f, screenCarY + 1f))
-                    drawCircle(mudColor, radius = 1f, center = Offset(screenCarX - 22f, screenCarY + 2f))
-                    drawCircle(mudColor, radius = 2f, center = Offset(screenCarX + 28f, screenCarY + 1f))
-                    drawCircle(mudColor, radius = 1.2f, center = Offset(screenCarX + 38f, screenCarY + 2f))
+                    // Outlined wheel arch mudguard shields
+                    val rearArch = Path().apply {
+                        moveTo(screenCarX - 44f, screenCarY - 2f)
+                        quadraticTo(screenCarX - 28f, screenCarY - 14f, screenCarX - 12f, screenCarY - 2f)
+                    }
+                    drawPath(rearArch, Color.Black, style = Stroke(width = 5f, cap = StrokeCap.Round))
+                    drawPath(rearArch, armyGreenMajor, style = Stroke(width = 3f, cap = StrokeCap.Round))
+
+                    val frontArch = Path().apply {
+                        moveTo(screenCarX + 12f, screenCarY - 2f)
+                        quadraticTo(screenCarX + 28f, screenCarY - 14f, screenCarX + 44f, screenCarY - 2f)
+                    }
+                    drawPath(frontArch, Color.Black, style = Stroke(width = 5f, cap = StrokeCap.Round))
+                    drawPath(frontArch, armyGreenMajor, style = Stroke(width = 3f, cap = StrokeCap.Round))
                 }
                 "Thar" -> {
                     // Thar - Rugged Indian 4x4 Offroader SUV
@@ -2761,7 +2900,7 @@ fun GameCanvas(
 
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
-            if (activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL || vehicle.id == "Buggy") {
+            if ((activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL) && vehicle.id != "Buggy") {
                 val coatColor = if (vehicle.id == "Buggy") Color(0xFF4B5320) else Color(0xFFDC2626)
                 val turbanColor = if (vehicle.id == "Buggy") Color(0xFF2E6F40) else Color(0xFFEA580C)
                 val shadowTurban = if (vehicle.id == "Buggy") Color(0xFF1B4324) else Color(0xFFC2410C)
@@ -2971,87 +3110,239 @@ fun GameCanvas(
 
         // Rear tire
         rotate(degrees = Math.toDegrees(gameState.rearWheelAngle.toDouble()).toFloat(), pivot = Offset(screenRearX, screenRearY)) {
-            // Tire outer rubber body (Charcoal Slate Black)
-            drawCircle(
-                color = Color(0xFF0F172A), 
-                radius = rad,
-                center = Offset(screenRearX, screenRearY)
-            )
-            // Tire inner bead lock
-            drawCircle(
-                color = Color(0xFF1E293B),
-                radius = rad * 0.85f,
-                center = Offset(screenRearX, screenRearY)
-            )
-            // Metallic Silver Chromium Rim
-            drawCircle(
-                color = Color(0xFF94A3B8), // slate silver rim center
-                radius = rad * 0.62f,
-                center = Offset(screenRearX, screenRearY)
-            )
-            drawCircle(
-                color = Color(0xFFE2E8F0), // inner bright chrome ring
-                radius = rad * 0.52f,
-                center = Offset(screenRearX, screenRearY)
-            )
-            // 6 sporty radial steel spokes
-            for (i in 0..5) {
-                val spokeAngle = (i * PI / 3f).toFloat()
-                drawLine(
-                    color = Color.White,
-                    start = Offset(screenRearX, screenRearY),
-                    end = Offset(screenRearX + rad * 0.58f * cos(spokeAngle), screenRearY + rad * 0.58f * sin(spokeAngle)),
-                    strokeWidth = 2.5f
+            if (vehicle.id == "Buggy") {
+                // Chunky 2D Jeep tire with tread notches and olive rim hubs
+                // Outer tyre outline
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                // Charcoal tire meat
+                drawCircle(
+                    color = Color(0xFF1E293B),
+                    radius = rad - 1.5f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                // Rugged tread blocks around the perimeter matching 2D sketch artwork
+                for (i in 0..11) {
+                    val tireSectAngle = (i * PI / 6f).toFloat()
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenRearX + (rad - 4f) * cos(tireSectAngle), screenRearY + (rad - 4f) * sin(tireSectAngle)),
+                        end = Offset(screenRearX + rad * cos(tireSectAngle), screenRearY + rad * sin(tireSectAngle)),
+                        strokeWidth = 3f
+                    )
+                }
+                // Olive Green rugged steel wheel rim
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.70f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                drawCircle(
+                    color = Color(0xFF5E6B4E), // Olive green match jeep body
+                    radius = rad * 0.64f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                // Concentric inner line detail
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.45f,
+                    center = Offset(screenRearX, screenRearY),
+                    style = Stroke(width = 1.8f)
+                )
+                // Hub center
+                drawCircle(
+                    color = Color(0xFF323B2A), // Shadow green inner plate
+                    radius = rad * 0.35f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.35f,
+                    center = Offset(screenRearX, screenRearY),
+                    style = Stroke(width = 1.2f)
+                )
+                // 5 circular hub bolt caps
+                for (b in 0..4) {
+                    val boltAngle = (b * 2 * PI / 5f).toFloat()
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 1.2f,
+                        center = Offset(screenRearX + (rad * 0.22f) * cos(boltAngle), screenRearY + (rad * 0.22f) * sin(boltAngle))
+                    )
+                    drawCircle(
+                        color = Color(0xFFD1D5DB), // tiny metal bolt
+                        radius = 0.6f,
+                        center = Offset(screenRearX + (rad * 0.22f) * cos(boltAngle), screenRearY + (rad * 0.22f) * sin(boltAngle))
+                    )
+                }
+                // Center dust cap axle
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.14f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+            } else {
+                // Tire outer rubber body (Charcoal Slate Black)
+                drawCircle(
+                    color = Color(0xFF0F172A), 
+                    radius = rad,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                // Tire inner bead lock
+                drawCircle(
+                    color = Color(0xFF1E293B),
+                    radius = rad * 0.85f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                // Metallic Silver Chromium Rim
+                drawCircle(
+                    color = Color(0xFF94A3B8), // slate silver rim center
+                    radius = rad * 0.62f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                drawCircle(
+                    color = Color(0xFFE2E8F0), // inner bright chrome ring
+                    radius = rad * 0.52f,
+                    center = Offset(screenRearX, screenRearY)
+                )
+                // 6 sporty radial steel spokes
+                for (i in 0..5) {
+                    val spokeAngle = (i * PI / 3f).toFloat()
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(screenRearX, screenRearY),
+                        end = Offset(screenRearX + rad * 0.58f * cos(spokeAngle), screenRearY + rad * 0.58f * sin(spokeAngle)),
+                        strokeWidth = 2.5f
+                    )
+                }
+                // Center axle cap
+                drawCircle(
+                    color = Color(0xFF0F172A),
+                    radius = rad * 0.16f,
+                    center = Offset(screenRearX, screenRearY)
                 )
             }
-            // Center axle cap
-            drawCircle(
-                color = Color(0xFF0F172A),
-                radius = rad * 0.16f,
-                center = Offset(screenRearX, screenRearY)
-            )
         }
 
         // Front tire (matching realistic styling)
         rotate(degrees = Math.toDegrees(gameState.frontWheelAngle.toDouble()).toFloat(), pivot = Offset(screenFrontX, screenFrontY)) {
-            // Tire outer rubber body
-            drawCircle(
-                color = Color(0xFF0F172A),
-                radius = rad,
-                center = Offset(screenFrontX, screenFrontY)
-            )
-            drawCircle(
-                color = Color(0xFF1E293B),
-                radius = rad * 0.85f,
-                center = Offset(screenFrontX, screenFrontY)
-            )
-            // Metallic Silver Chromium Rim
-            drawCircle(
-                color = Color(0xFF94A3B8),
-                radius = rad * 0.62f,
-                center = Offset(screenFrontX, screenFrontY)
-            )
-            drawCircle(
-                color = Color(0xFFE2E8F0),
-                radius = rad * 0.52f,
-                center = Offset(screenFrontX, screenFrontY)
-            )
-            // 6 sporty radial steel spokes
-            for (i in 0..5) {
-                val spokeAngle = (i * PI / 3f).toFloat()
-                drawLine(
-                    color = Color.White,
-                    start = Offset(screenFrontX, screenFrontY),
-                    end = Offset(screenFrontX + rad * 0.58f * cos(spokeAngle), screenFrontY + rad * 0.58f * sin(spokeAngle)),
-                    strokeWidth = 2.5f
+            if (vehicle.id == "Buggy") {
+                // Chunky 2D Jeep tire with tread notches and olive rim hubs
+                // Outer tyre outline
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                // Charcoal tire meat
+                drawCircle(
+                    color = Color(0xFF1E293B),
+                    radius = rad - 1.5f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                // Rugged tread blocks around the perimeter matching 2D sketch artwork
+                for (i in 0..11) {
+                    val tireSectAngle = (i * PI / 6f).toFloat()
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenFrontX + (rad - 4f) * cos(tireSectAngle), screenFrontY + (rad - 4f) * sin(tireSectAngle)),
+                        end = Offset(screenFrontX + rad * cos(tireSectAngle), screenFrontY + rad * sin(tireSectAngle)),
+                        strokeWidth = 3f
+                    )
+                }
+                // Olive Green rugged steel wheel rim
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.70f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                drawCircle(
+                    color = Color(0xFF5E6B4E), // Olive green match jeep body
+                    radius = rad * 0.64f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                // Concentric inner line detail
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.45f,
+                    center = Offset(screenFrontX, screenFrontY),
+                    style = Stroke(width = 1.8f)
+                )
+                // Hub center
+                drawCircle(
+                    color = Color(0xFF323B2A), // Shadow green inner plate
+                    radius = rad * 0.35f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.35f,
+                    center = Offset(screenFrontX, screenFrontY),
+                    style = Stroke(width = 1.2f)
+                )
+                // 5 circular hub bolt caps
+                for (b in 0..4) {
+                    val boltAngle = (b * 2 * PI / 5f).toFloat()
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 1.2f,
+                        center = Offset(screenFrontX + (rad * 0.22f) * cos(boltAngle), screenFrontY + (rad * 0.22f) * sin(boltAngle))
+                    )
+                    drawCircle(
+                        color = Color(0xFFD1D5DB), // tiny metal bolt
+                        radius = 0.6f,
+                        center = Offset(screenFrontX + (rad * 0.22f) * cos(boltAngle), screenFrontY + (rad * 0.22f) * sin(boltAngle))
+                    )
+                }
+                // Center dust cap axle
+                drawCircle(
+                    color = Color.Black,
+                    radius = rad * 0.14f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+            } else {
+                // Tire outer rubber body
+                drawCircle(
+                    color = Color(0xFF0F172A),
+                    radius = rad,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                drawCircle(
+                    color = Color(0xFF1E293B),
+                    radius = rad * 0.85f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                // Metallic Silver Chromium Rim
+                drawCircle(
+                    color = Color(0xFF94A3B8),
+                    radius = rad * 0.62f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                drawCircle(
+                    color = Color(0xFFE2E8F0),
+                    radius = rad * 0.52f,
+                    center = Offset(screenFrontX, screenFrontY)
+                )
+                // 6 sporty radial steel spokes
+                for (i in 0..5) {
+                    val spokeAngle = (i * PI / 3f).toFloat()
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(screenFrontX, screenFrontY),
+                        end = Offset(screenFrontX + rad * 0.58f * cos(spokeAngle), screenFrontY + rad * 0.58f * sin(spokeAngle)),
+                        strokeWidth = 2.5f
+                    )
+                }
+                // Center axle cap
+                drawCircle(
+                    color = Color(0xFF0F172A),
+                    radius = rad * 0.16f,
+                    center = Offset(screenFrontX, screenFrontY)
                 )
             }
-            // Center axle cap
-            drawCircle(
-                color = Color(0xFF0F172A),
-                radius = rad * 0.16f,
-                center = Offset(screenFrontX, screenFrontY)
-            )
         }
     }
 }

@@ -226,7 +226,7 @@ class GameViewModel(
                 it.copy(
                     nitroCharges = updatedCharges,
                     isNitroActive = true,
-                    nitroActiveTimeRemaining = 4.0f
+                    nitroActiveTimeRemaining = 1.0f
                 )
             }
             _nitroCharges.value = updatedCharges
@@ -246,7 +246,7 @@ class GameViewModel(
             _gameState.update {
                 it.copy(
                     isNitroActive = true,
-                    nitroActiveTimeRemaining = 4.0f
+                    nitroActiveTimeRemaining = 1.0f
                 )
             }
         }
