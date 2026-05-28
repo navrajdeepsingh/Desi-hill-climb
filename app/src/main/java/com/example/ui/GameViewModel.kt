@@ -32,11 +32,12 @@ enum class VehicleType(
     val wheelRadius: Float,
     val unlockCost: Int
 ) {
-    BUGGY("Buggy", "Dune Buggy", "Light and agile, flips fast in mid-air.", 1.0f, 320f, 1.0f, 1.0f, 85f, 32f, 18f, 0),
-    MONSTER_TRUCK("MonsterTruck", "Monster Truck", "Heavy, giant tires, and deep bouncy suspension.", 1.5f, 440f, 1.3f, 1.4f, 100f, 45f, 26f, 1200),
-    BULLET("Bullet", "Royal Bullet", "Heavy legendary cruiser, iconic retro thump sound & high mass.", 1.25f, 385f, 1.25f, 1.1f, 75f, 28f, 17f, 2000),
-    SPLENDOR("Splendor", "Desi Splendor", "Highly fuel efficient, the ultimate daily commuter bike.", 0.85f, 345f, 1.05f, 0.95f, 65f, 26f, 14f, 3000),
-    SPORTS_RACER("SportsRacer", "Sports Racer", "Low center of gravity, ultra-fast racing engine.", 0.9f, 520f, 1.5f, 0.7f, 90f, 22f, 16f, 5000)
+    BUGGY("Buggy", "Desi Jeep", "Classic 4x4 rugged open-top vintage utility Jeep in military olive green.", 1.05f, 335f, 1.1f, 1.05f, 85f, 32f, 18f, 0),
+    SPLENDOR("Splendor", "Desi Splendor", "Highly fuel efficient, the ultimate daily commuter bike.", 0.85f, 345f, 1.05f, 0.95f, 65f, 26f, 14f, 1200),
+    THAR("Thar", "Mahindra Thar 4x4", "Heavy-duty offroader with massive climbing torque, unstoppable 4x4 power.", 1.55f, 460f, 1.4f, 1.35f, 96f, 42f, 23f, 2000),
+    BULLET("Bullet", "Royal Bullet", "Heavy legendary cruiser, iconic retro thump sound & high mass.", 1.25f, 385f, 1.25f, 1.1f, 75f, 28f, 17f, 3000),
+    MONSTER_TRUCK("MonsterTruck", "Monster Truck", "Heavy, giant tires, and deep bouncy suspension.", 1.5f, 440f, 1.3f, 1.4f, 100f, 45f, 26f, 4500),
+    SPORTS_RACER("SportsRacer", "Sports Racer", "Low center of gravity, ultra-fast racing engine.", 0.9f, 520f, 1.5f, 0.7f, 90f, 22f, 16f, 6000)
 }
 
 data class Particle(
@@ -79,7 +80,8 @@ data class GameState(
     val particles: List<Particle> = emptyList(),
     val collectedCoins: Set<Int> = emptySet(),
     val collectedFuel: Set<Int> = emptySet(),
-    val barrierX: Float = 20f
+    val barrierX: Float = 20f,
+    val lastMilestonePlayed: Int = 0
 )
 
 class GameViewModel(
@@ -193,6 +195,12 @@ class GameViewModel(
         collectedFuelIds.clear()
         maxCarXReached = 50f
         
+        // Pre-buffer the online stream for milestone audio so it plays instantly
+        MilestoneSoundPlayer.preBuffer()
+        
+        // Start playing the custom driving engine audio streams
+        DrivingSoundPlayer.start()
+        
         val activeVehicle = getCurrentVehicle()
         val profile = playerProfile.value ?: PlayerProfile()
         
@@ -221,15 +229,18 @@ class GameViewModel(
 
     fun pauseGame() {
         _gameState.update { it.copy(isPaused = true) }
+        DrivingSoundPlayer.pause()
     }
 
     fun resumeGame() {
         _gameState.update { it.copy(isPaused = false) }
+        DrivingSoundPlayer.resume()
     }
 
     fun exitToMenu() {
         // End active state
         _gameState.update { it.copy(gameActive = false) }
+        DrivingSoundPlayer.stop()
     }
 
     // Physics constants
@@ -287,7 +298,13 @@ class GameViewModel(
     // Physics Engine Update (dt = elapsed delta-time in seconds)
     fun tick(dt: Float, gasPressed: Boolean, brakePressed: Boolean) {
         val state = _gameState.value
-        if (!state.gameActive || state.isPaused || state.isCrashed || state.isOutOfFuel) return
+        if (!state.gameActive || state.isPaused || state.isCrashed || state.isOutOfFuel) {
+            DrivingSoundPlayer.stop()
+            return
+        }
+
+        // Dynamically adjust audio pitch and volume based on throttle / gas input
+        DrivingSoundPlayer.setGasState(gasPressed)
 
         val vehicle = getCurrentVehicle()
         val profile = playerProfile.value ?: PlayerProfile()
@@ -592,6 +609,19 @@ class GameViewModel(
             newFuel = min(activeMaxFuel, newFuel + activeMaxFuel * 0.45f)
         }
 
+        // Check 1000m milestones
+        val currentMilestone = (displayDistance / 1000f).toInt()
+        var updatedMilestone = state.lastMilestonePlayed
+        if (currentMilestone > state.lastMilestonePlayed) {
+            updatedMilestone = currentMilestone
+            if (currentMilestone > 0) {
+                // Play sound every 1000m (streams GDrive sound file, falls back to sweet synthetic triplet)
+                MilestoneSoundPlayer.play()
+                // Spectacular visual reward particle cascade centered at driver height
+                spawnCelebrationSplash(newCarX, newCarY - 20f, particlesList)
+            }
+        }
+
         // SINGLE and atomic state update Flow emission
         _gameState.update {
             it.copy(
@@ -609,7 +639,35 @@ class GameViewModel(
                 particles = particlesList,
                 collectedCoins = collectedCoinIds.toSet(),
                 collectedFuel = collectedFuelIds.toSet(),
-                barrierX = barrierWorldX
+                barrierX = barrierWorldX,
+                lastMilestonePlayed = updatedMilestone
+            )
+        }
+    }
+
+    private fun spawnCelebrationSplash(x: Float, y: Float, particlesList: MutableList<Particle>) {
+        for (i in 0..45) {
+            val angle = Math.random() * 2 * Math.PI
+            val speed = 140f + (Math.random() * 220f).toFloat()
+            particlesList.add(
+                Particle(
+                    x = x,
+                    y = y,
+                    vx = (speed * cos(angle)).toFloat(),
+                    vy = (speed * sin(angle)).toFloat(),
+                    // Vibrant colors (Golden, Purple, Magenta, Cyan)
+                    color = when (i % 4) {
+                        0 -> 0xDDFFD700 // Gold star shimmer
+                        1 -> 0xDDD0BCFF // Glowing violet
+                        2 -> 0xDDF43F5E // Radiant rose pink
+                        else -> 0xDD06B6D4 // Neon teal
+                    },
+                    initialSize = 7f + (Math.random() * 12f).toFloat(),
+                    size = 1f,
+                    alpha = 1f,
+                    maxLife = 1.4f,
+                    life = 1.4f
+                )
             )
         }
     }
@@ -705,6 +763,9 @@ class GameViewModel(
 
     // End run and persists metrics
     private fun endRaceRun() {
+        // Stop playing the driving sounds immediately
+        DrivingSoundPlayer.stop()
+
         val state = _gameState.value
         val profile = playerProfile.value ?: PlayerProfile()
 

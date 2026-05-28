@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
+    <!-- Declare attribution tags to satisfy Android AppOps auditing and prevent CONTROL_AUDIO warning logs -->
+    <attribution android:tag="control_audio" android:label="@string/app_name" />
+    <attribution android:tag="control_audio_partial" android:label="@string/app_name" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

@@ -83,6 +83,8 @@ fun GameScreen(
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
                     LobbyMusicPlayer.stop()
+                    MilestoneSoundPlayer.stop()
+                    DrivingSoundPlayer.stop()
                 }
                 else -> {}
             }
@@ -91,6 +93,8 @@ fun GameScreen(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             LobbyMusicPlayer.stop()
+            MilestoneSoundPlayer.stop()
+            DrivingSoundPlayer.stop()
         }
     }
 
@@ -103,18 +107,34 @@ fun GameScreen(
             // Sidhu Moosewala theme background decoration (B&W portrait or Cute Infant Son visual)
             Image(
                 painter = painterResource(
-                    id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_prem_dhillon
+                    id = when (activeTrack) {
+                        MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
+                        MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
+                        MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
+                    }
                 ),
                 contentDescription = "Theme Background",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                alpha = if (activeTrack == MusicTrack.THE_LAST_RIDE) 0.5f else 0.45f
+                alpha = when (activeTrack) {
+                    MusicTrack.THE_LAST_RIDE -> 0.5f
+                    MusicTrack.OLD_SKOOL -> 0.45f
+                    MusicTrack.SIDHU_MOOSEWALA -> 0.55f
+                }
             )
             // Soft overlay to maintain exceptional contrast for readability
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = if (activeTrack == MusicTrack.THE_LAST_RIDE) 0.55f else 0.45f))
+                    .background(
+                        Color.Black.copy(
+                            alpha = when (activeTrack) {
+                                MusicTrack.THE_LAST_RIDE -> 0.55f
+                                MusicTrack.OLD_SKOOL -> 0.45f
+                                MusicTrack.SIDHU_MOOSEWALA -> 0.50f
+                            }
+                        )
+                    )
             )
             // Main Menu & Garage / Upgrades Shop
             GarageMenuScreen(
@@ -333,7 +353,11 @@ fun GarageTab(
                 ) {
                     Image(
                         painter = painterResource(
-                            id = if (activeTrack == MusicTrack.THE_LAST_RIDE) R.drawable.img_last_ride_photo else R.drawable.img_prem_dhillon
+                            id = when (activeTrack) {
+                                MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
+                                MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
+                                MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
+                            }
                         ),
                         contentDescription = "Theme Thumbnail",
                         contentScale = ContentScale.Crop,
@@ -352,13 +376,17 @@ fun GarageTab(
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = if (activeTrack == MusicTrack.THE_LAST_RIDE) "The Last Ride (B&W Photo)" else "Old Skool (Prem Dhillon)",
+                        text = when (activeTrack) {
+                            MusicTrack.THE_LAST_RIDE -> "The Last Ride (B&W Photo)"
+                            MusicTrack.OLD_SKOOL -> "Old Skool (Prem Dhillon)"
+                            MusicTrack.SIDHU_MOOSEWALA -> "Sidhu Moose Wala - Legend (Drive Stream)"
+                        },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
                     )
                     Text(
-                        text = "Background procedural beat loop playing",
+                        text = "Background lyric streaming active",
                         fontSize = 11.sp,
                         color = Color(0xFF938F99)
                     )
@@ -367,7 +395,11 @@ fun GarageTab(
                 // Switch Button to cycle theme and music
                 Button(
                     onClick = {
-                        val nextTrack = if (activeTrack == MusicTrack.THE_LAST_RIDE) MusicTrack.OLD_SKOOL else MusicTrack.THE_LAST_RIDE
+                        val nextTrack = when (activeTrack) {
+                            MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
+                            MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
+                            MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
+                        }
                         onTrackSelected(nextTrack)
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -559,10 +591,11 @@ fun VehicleSelectionCard(
                     .size(36.dp)
                     .background(
                         when (vehicle.id) {
-                            "Buggy" -> Color(0xFFEF4444) // Red Buggy
-                            "MonsterTruck" -> Color(0xFFF59E0B) // Yellow Truck
-                            "Bullet" -> Color(0xFF1E293B) // Dark Black Bullet
+                            "Buggy" -> Color(0xFF4C583E) // Olive Green Desi Jeep
                             "Splendor" -> Color(0xFF06B6D4) // Cyan Splendor
+                            "Thar" -> Color(0xFF991B1B) // Bold Crimson Red Thar
+                            "Bullet" -> Color(0xFF1E293B) // Dark Black Bullet
+                            "MonsterTruck" -> Color(0xFFF59E0B) // Yellow Truck
                             else -> Color(0xFF2563EB) // Blue Sports Car
                         },
                         shape = CircleShape
@@ -572,9 +605,10 @@ fun VehicleSelectionCard(
                 Icon(
                     imageVector = when (vehicle.id) {
                         "Buggy" -> Icons.Default.DirectionsCar
-                        "MonsterTruck" -> Icons.Default.Agriculture
-                        "Bullet" -> Icons.Default.DirectionsBike
                         "Splendor" -> Icons.Default.DirectionsBike
+                        "Thar" -> Icons.Default.TimeToLeave
+                        "Bullet" -> Icons.Default.DirectionsBike
+                        "MonsterTruck" -> Icons.Default.Agriculture
                         else -> Icons.Default.ElectricCar
                     },
                     contentDescription = null,
@@ -1115,7 +1149,11 @@ fun ActiveGameplayScreen(
                         isRadioOn = isRadioOn,
                         onRadioToggle = onRadioToggle,
                         onStationChange = {
-                            val nextTrack = if (activeTrack == MusicTrack.THE_LAST_RIDE) MusicTrack.OLD_SKOOL else MusicTrack.THE_LAST_RIDE
+                            val nextTrack = when (activeTrack) {
+                                MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
+                                MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
+                                MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
+                            }
                             onTrackSelected(nextTrack)
                         }
                     )
@@ -1851,41 +1889,362 @@ fun GameCanvas(
             // Dynamic 2D Vehicle Body based on active type
             when (vehicle.id) {
                 "Buggy" -> {
-                    // Red dune buggy frame tubes
-                    // Bottom rocker
+                    // 1. Olive/Military Green Rugged Body Tub
+                    val armyGreenMajor = Color(0xFF4C583E)
+                    val armyGreenShadow = Color(0xFF323B2A)
+                    val armyGreenLight = Color(0xFF677359)
+                    val ironColor = Color(0xFF64748B)       // Winch / bumper / metal
+                    val triSaffron = Color(0xFFEA580C)      // flag saffron
+                    val triGreen = Color(0xFF16A34A)        // flag green
+                    val tireColor = Color(0xFF1E293B)       // tire dark grey
+                    val mudColor = Color(0xFF78350F)        // mud/dirt color accent
+
+                    // Bumper and Front Winch hook
                     drawRoundRect(
-                        color = Color(0xFFEF4444), // Main red
-                        topLeft = Offset(screenCarX - 45f, screenCarY - 14f),
-                        size = Size(90f, 12f),
+                        color = Color(0xFF475569),
+                        topLeft = Offset(screenCarX + 46f, screenCarY - 8f),
+                        size = Size(10f, 6f),
+                        cornerRadius = CornerRadius(1f)
+                    )
+                    // Front winch bracket / cable reel
+                    drawCircle(
+                        color = Color.DarkGray,
+                        radius = 4f,
+                        center = Offset(screenCarX + 44f, screenCarY - 5f)
+                    )
+
+                    // A. Rear-mounted spare wheel (on the back wall)
+                    drawCircle(
+                        color = tireColor,
+                        radius = 16f,
+                        center = Offset(screenCarX - 58f, screenCarY - 11f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF475569), // Steel inner wheel hub
+                        radius = 8f,
+                        center = Offset(screenCarX - 58f, screenCarY - 11f)
+                    )
+                    // Hub bolts
+                    drawCircle(color = Color.White, radius = 1.5f, center = Offset(screenCarX - 58f, screenCarY - 11f))
+                    
+                    // B. Rear Roll Cage Bar / Windshield frame
+                    // Roll bar backing up driver
+                    drawLine(
+                        color = ironColor,
+                        start = Offset(screenCarX - 35f, screenCarY - 14f),
+                        end = Offset(screenCarX - 35f, screenCarY - 38f),
+                        strokeWidth = 3.5f
+                    )
+                    drawLine(
+                        color = ironColor,
+                        start = Offset(screenCarX - 35f, screenCarY - 38f),
+                        end = Offset(screenCarX - 48f, screenCarY - 14f),
+                        strokeWidth = 3.0f
+                    )
+                    // Front Windshield Frame (tilted forward slab slightly)
+                    drawLine(
+                        color = ironColor,
+                        start = Offset(screenCarX + 16f, screenCarY - 15f),
+                        end = Offset(screenCarX + 12f, screenCarY - 38f),
+                        strokeWidth = 3.5f
+                    )
+                    // Inner windshield glass shading (semi translucent blue/white)
+                    val glassPath = Path().apply {
+                        moveTo(screenCarX + 16f, screenCarY - 15f)
+                        lineTo(screenCarX + 12f, screenCarY - 38f)
+                        lineTo(screenCarX + 15f, screenCarY - 38f)
+                        lineTo(screenCarX + 19f, screenCarY - 15f)
+                        close()
+                    }
+                    drawPath(glassPath, Color(0x7FBAE6FD))
+
+                    // C. Jerry cans mounted at the rear
+                    // Red jerry can
+                    drawRoundRect(
+                        color = Color(0xFF991B1B), // Red jerry can
+                        topLeft = Offset(screenCarX - 48f, screenCarY - 24f),
+                        size = Size(8f, 13f),
+                        cornerRadius = CornerRadius(2f)
+                    )
+                    // Jerry can steel handle & bracket
+                    drawLine(Color.Black, Offset(screenCarX - 46f, screenCarY - 24f), Offset(screenCarX - 46f, screenCarY - 24f), strokeWidth = 1.5f)
+                    drawLine(Color.Black, Offset(screenCarX - 42f, screenCarY - 24f), Offset(screenCarX - 42f, screenCarY - 24f), strokeWidth = 1.5f)
+
+                    // D. Olive Green Main Cabin & Body Tub
+                    // Bottom main horizontal plate
+                    drawRoundRect(
+                        color = armyGreenMajor,
+                        topLeft = Offset(screenCarX - 52f, screenCarY - 15f),
+                        size = Size(100f, 15f), // 100f long, 15f thick
+                        cornerRadius = CornerRadius(2f)
+                    )
+                    
+                    // Rear quarter higher wall panel
+                    drawRoundRect(
+                        color = armyGreenShadow,
+                        topLeft = Offset(screenCarX - 52f, screenCarY - 19f),
+                        size = Size(36f, 5f),
+                        cornerRadius = CornerRadius(1f)
+                    )
+                    
+                    // Front hood block (the engine nose)
+                    val hoodPath = Path().apply {
+                        moveTo(screenCarX + 10f, screenCarY - 15f) // driver cowl
+                        lineTo(screenCarX + 14f, screenCarY - 22f) // hood starting rise panel
+                        lineTo(screenCarX + 46f, screenCarY - 22f) // front radiator nose top
+                        lineTo(screenCarX + 46f, screenCarY)       // front grille nose bottom
+                        lineTo(screenCarX + 10f, screenCarY)
+                        close()
+                    }
+                    drawPath(hoodPath, armyGreenMajor)
+                    // Hood highlight line
+                    drawLine(
+                        color = armyGreenLight,
+                        start = Offset(screenCarX + 14f, screenCarY - 22f),
+                        end = Offset(screenCarX + 46f, screenCarY - 22f),
+                        strokeWidth = 2f
+                    )
+
+                    // E. Front Grille Vertical Slits & Halogen Headlight
+                    // Grille vertical slits (classic military grill look)
+                    for (i in 0..4) {
+                        val slitX = screenCarX + 34f + (i * 2.5f)
+                        drawLine(
+                            color = Color(0xFF1E293B),
+                            start = Offset(slitX, screenCarY - 15f),
+                            end = Offset(slitX, screenCarY - 2f),
+                            strokeWidth = 1.2f
+                        )
+                    }
+                    // Hood side text label outline or white detailing representing "DESI JEEP" or similar pattern
+                    // Tiny Indian sticker decoration on the hood side
+                    drawRect(triSaffron, Offset(screenCarX + 18f, screenCarY - 14f), Size(8f, 2f))
+                    drawRect(Color.White, Offset(screenCarX + 18f, screenCarY - 12f), Size(8f, 2f))
+                    drawRect(triGreen, Offset(screenCarX + 18f, screenCarY - 10f), Size(8f, 2f))
+
+                    // White "DESI" written representation / clean white sticker line
+                    drawLine(Color.White, Offset(screenCarX + 28f, screenCarY - 11f), Offset(screenCarX + 40f, screenCarY - 11f), strokeWidth = 1.5f)
+
+                    // F. Round Chrome Halogen Headlight
+                    drawCircle(
+                        color = Color.White,
+                        radius = 3.5f,
+                        center = Offset(screenCarX + 44f, screenCarY - 15f)
+                    )
+                    drawCircle(
+                        color = Color(0xFFFEF08A), // bright light core
+                        radius = 2.2f,
+                        center = Offset(screenCarX + 44f, screenCarY - 15f)
+                    )
+
+                    // G. Tricolor National Flag waving on Rear Mast
+                    // Flag Mast pole
+                    drawLine(
+                        color = Color(0xFF475569),
+                        start = Offset(screenCarX - 35f, screenCarY - 38f),
+                        end = Offset(screenCarX - 35f, screenCarY - 60f),
+                        strokeWidth = 1.8f
+                    )
+                    // High detail Tricolor waving visual on rear
+                    drawRect(triSaffron, Offset(screenCarX - 47f, screenCarY - 60f), Size(12f, 3.2f))
+                    drawRect(Color.White, Offset(screenCarX - 47f, screenCarY - 56.8f), Size(12f, 3.2f))
+                    drawRect(triGreen, Offset(screenCarX - 47f, screenCarY - 53.6f), Size(12f, 3.2f))
+                    
+                    // Ashok Chakra mini dot
+                    drawCircle(
+                        color = Color(0xFF1E3A8A),
+                        radius = 0.9f,
+                        center = Offset(screenCarX - 41f, screenCarY - 55.2f)
+                    )
+
+                    // H. Triangular saffron/orange flag on the front hood (Mast flagpole)
+                    drawLine(
+                        color = Color(0xFF475569),
+                        start = Offset(screenCarX + 44f, screenCarY - 22f),
+                        end = Offset(screenCarX + 44f, screenCarY - 35f),
+                        strokeWidth = 1.5f
+                    )
+                    // Triangle peak path to represent flying saffron triangular flag
+                    val triFlag = Path().apply {
+                        moveTo(screenCarX + 44f, screenCarY - 35f)
+                        lineTo(screenCarX + 34f, screenCarY - 31.5f)
+                        lineTo(screenCarX + 44f, screenCarY - 28f)
+                        close()
+                    }
+                    drawPath(triFlag, triSaffron)
+
+                    // I. Slanted Steering Column and Steering Wheel
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenCarX + 11f, screenCarY - 14f),
+                        end = Offset(screenCarX - 1f, screenCarY - 24f),
+                        strokeWidth = 1.8f
+                    )
+                    // Steering wheel wheel crown
+                    drawOval(
+                        color = Color(0xFF475569),
+                        topLeft = Offset(screenCarX - 5f, screenCarY - 27f),
+                        size = Size(8f, 4f)
+                    )
+
+                    // J. Rugged Mudguards & mud splats on Lower Body
+                    // Rear fender flare / mudguard
+                    drawArc(
+                        color = Color(0xFF1E293B),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = false,
+                        topLeft = Offset(screenCarX - 58f, screenCarY - 5f),
+                        size = Size(32f, 14f),
+                        style = Stroke(width = 3.5f)
+                    )
+                    // Front fender flare / mudguard
+                    drawArc(
+                        color = Color(0xFF1E293B),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = false,
+                        topLeft = Offset(screenCarX + 26f, screenCarY - 5f),
+                        size = Size(32f, 14f),
+                        style = Stroke(width = 3.5f)
+                    )
+
+                    // Mud splatters decoration
+                    drawCircle(mudColor, radius = 1.5f, center = Offset(screenCarX - 48f, screenCarY + 1f))
+                    drawCircle(mudColor, radius = 1f, center = Offset(screenCarX - 22f, screenCarY + 2f))
+                    drawCircle(mudColor, radius = 2f, center = Offset(screenCarX + 28f, screenCarY + 1f))
+                    drawCircle(mudColor, radius = 1.2f, center = Offset(screenCarX + 38f, screenCarY + 2f))
+                }
+                "Thar" -> {
+                    // Thar - Rugged Indian 4x4 Offroader SUV
+                    // 1. Lower chassis frame / robust black rocker panel and bumpers
+                    drawRoundRect(
+                        color = Color(0xFF1E293B), // Charcoal/Black heavy bumpers
+                        topLeft = Offset(screenCarX - 58f, screenCarY - 14f),
+                        size = Size(116f, 12f),
                         cornerRadius = CornerRadius(4f)
                     )
-                    // Slanted cabin tubes (Cockpit structure)
-                    val buggyCabinPath = Path()
-                    buggyCabinPath.moveTo(screenCarX - 35f, screenCarY - 14f)
-                    buggyCabinPath.lineTo(screenCarX - 10f, screenCarY - 34f)
-                    buggyCabinPath.lineTo(screenCarX + 20f, screenCarY - 34f)
-                    buggyCabinPath.lineTo(screenCarX + 35f, screenCarY - 14f)
-                    buggyCabinPath.close()
-                    drawPath(
-                        path = buggyCabinPath,
-                        color = Color(0xFF1E293B), // Inside cage shading
-                    )
-                    drawPath(
-                        path = buggyCabinPath,
-                        color = Color(0xFFB91C1C), // Bright frame outline
-                        style = Stroke(width = 4f, join = StrokeJoin.Round)
-                    )
-
-                    // Rear spoiler / wing
+                    
+                    // 2. High ground clearance under-guard / transmission block (metallic dark grey)
                     drawRect(
-                        color = Color.Black,
-                        topLeft = Offset(screenCarX - 48f, screenCarY - 22f),
-                        size = Size(10f, 4f)
+                        color = Color(0xFF475569),
+                        topLeft = Offset(screenCarX - 32f, screenCarY - 6f),
+                        size = Size(64f, 6f)
                     )
-                    drawLine(Color.Black, start = Offset(screenCarX - 43f, screenCarY-14f), end = Offset(screenCarX - 43f, screenCarY-22f), strokeWidth = 3f)
 
-                    // Front bumper bar
-                    drawLine(Color(0xFF64748B), start = Offset(screenCarX + 44f, screenCarY - 10f), end = Offset(screenCarX + 54f, screenCarY - 22f), strokeWidth = 4f)
+                    // 3. Main Muscular Body shell - Deep Crimson Red
+                    drawRoundRect(
+                        color = Color(0xFFB91C1C), // Deep Indian Red
+                        topLeft = Offset(screenCarX - 52f, screenCarY - 32f),
+                        size = Size(100f, 20f),
+                        cornerRadius = CornerRadius(3f)
+                    )
+                    
+                    // 4. Front grille bumper slant
+                    val frontHood = Path().apply {
+                        moveTo(screenCarX + 30f, screenCarY - 32f)
+                        quadraticTo(screenCarX + 42f, screenCarY - 32f, screenCarX + 48f, screenCarY - 30f)
+                        lineTo(screenCarX + 48f, screenCarY - 14f)
+                        lineTo(screenCarX + 30f, screenCarY - 14f)
+                        close()
+                    }
+                    drawPath(frontHood, Color(0xFF991B1B)) // Darker red hood front
+
+                    // Front circular classic halogen headlight (glowing warm-yellow)
+                    drawCircle(
+                        color = Color(0xFFFEF08A), // Bright warm-yellow glow
+                        radius = 4.5f,
+                        center = Offset(screenCarX + 44f, screenCarY - 24f)
+                    )
+                    drawCircle(
+                        color = Color(0xFFFFFFFF).copy(alpha = 0.5f), // Highlight lens
+                        radius = 2.5f,
+                        center = Offset(screenCarX + 45f, screenCarY - 25f)
+                    )
+
+                    // 5. Hardtop cabin - Tough matte black canopy/D-pillar structure
+                    val hardTopPath = Path().apply {
+                        moveTo(screenCarX - 52f, screenCarY - 32f)
+                        lineTo(screenCarX - 52f, screenCarY - 48f)
+                        lineTo(screenCarX + 12f, screenCarY - 48f)
+                        lineTo(screenCarX + 24f, screenCarY - 32f)
+                        close()
+                    }
+                    drawPath(hardTopPath, Color(0xFF0F172A)) // Pure off-road matte black hardtop cabin
+
+                    // 6. Detailed Side Windows (Blue/Sky tinted glass)
+                    // Rear sliding windows
+                    drawRoundRect(
+                        color = Color(0xAA93C5FD), // Sky blue transparent glass
+                        topLeft = Offset(screenCarX - 44f, screenCarY - 44f),
+                        size = Size(23f, 10f),
+                        cornerRadius = CornerRadius(1.5f)
+                    )
+                    // Front passenger window
+                    val frontWindow = Path().apply {
+                        moveTo(screenCarX - 16f, screenCarY - 44f)
+                        lineTo(screenCarX + 9f, screenCarY - 44f)
+                        lineTo(screenCarX + 18f, screenCarY - 34f)
+                        lineTo(screenCarX - 16f, screenCarY - 34f)
+                        close()
+                    }
+                    drawPath(frontWindow, Color(0xBB93C5FD))
+
+                    // 7. Muscular Heavy Black Fender flares (arch moldings above wheels for rough conditions)
+                    // Rear fender flare wheelarch
+                    drawArc(
+                        color = Color(0xFF0F172A),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = true,
+                        topLeft = Offset(screenCarX - 45f, screenCarY - 18f),
+                        size = Size(26f, 12f)
+                    )
+                    // Front fender flare wheelarch
+                    drawArc(
+                        color = Color(0xFF0F172A),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = true,
+                        topLeft = Offset(screenCarX + 14f, screenCarY - 18f),
+                        size = Size(26f, 12f)
+                    )
+
+                    // 8. Spare Wheel mounted on tailgate (Classic Thar 4x4 trademark asset)
+                    drawRoundRect(
+                        color = Color(0xFF334155), // Rugged rubber tyre color
+                        topLeft = Offset(screenCarX - 60f, screenCarY - 38f),
+                        size = Size(10f, 18f),
+                        cornerRadius = CornerRadius(2.5f)
+                    )
+                    drawRect(
+                        color = Color(0xFF94A3B8), // Metallic wheel spacer/plate
+                        topLeft = Offset(screenCarX - 52f, screenCarY - 31f),
+                        size = Size(4f, 4f)
+                    )
+
+                    // 9. Side Steps footboard (essential SUV detail)
+                    drawLine(
+                        color = Color(0xFF64748B),
+                        start = Offset(screenCarX - 18f, screenCarY - 2f),
+                        end = Offset(screenCarX + 18f, screenCarY - 2f),
+                        strokeWidth = 3f,
+                        cap = StrokeCap.Round
+                    )
+
+                    // 10. Distinctive "4x4" badge moniker and door details
+                    drawRect(
+                        color = Color(0xFFDFB600), // Golden chrome logo label
+                        topLeft = Offset(screenCarX - 18f, screenCarY - 22f),
+                        size = Size(6f, 3f)
+                    )
+                    // Door handle
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX + 4f, screenCarY - 24f),
+                        size = Size(6f, 2.2f),
+                        cornerRadius = CornerRadius(0.5f)
+                    )
                 }
                 "MonsterTruck" -> {
                     // Yellow/Orange Monster truck cabin
@@ -2089,10 +2448,14 @@ fun GameCanvas(
             }
 
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
-            if (activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL) {
-                // 1. Driver coat (Kurta style red jacket)
+            if (activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL || activeTrack == MusicTrack.SIDHU_MOOSEWALA || vehicle.id == "Buggy") {
+                val coatColor = if (vehicle.id == "Buggy") Color(0xFF4B5320) else Color(0xFFDC2626)
+                val turbanColor = if (vehicle.id == "Buggy") Color(0xFF2A3D2A) else Color(0xFFEA580C)
+                val shadowTurban = if (vehicle.id == "Buggy") Color(0xFF1B2C1C) else Color(0xFFC2410C)
+
+                // 1. Driver coat (Kurta style matching shirt/jacket)
                 drawCircle(
-                    color = Color(0xFFDC2626),
+                    color = coatColor,
                     radius = 8f,
                     center = Offset(screenCarX - 2f, screenCarY - 17f)
                 )
@@ -2156,10 +2519,7 @@ fun GameCanvas(
                     strokeWidth = 1.2f
                 )
 
-                // 7. Sikh Turban (Dastar) in rich Saffron Kesari color
-                val turbanColor = Color(0xFFEA580C)
-                val shadowTurban = Color(0xFFC2410C)
-                
+                // 7. Sikh Turban (Dastar)
                 drawOval(
                     color = turbanColor,
                     topLeft = Offset(screenCarX - 12f, screenCarY - 35f),
@@ -2384,7 +2744,11 @@ fun DashboardRadioPlayer(
                         )
                         Text(
                             text = if (isRadioOn) {
-                                if (activeTrack == MusicTrack.THE_LAST_RIDE) "SIDHU FM 94.4" else "PUNJABI 101"
+                                when (activeTrack) {
+                                    MusicTrack.THE_LAST_RIDE -> "SIDHU FM 94.4"
+                                    MusicTrack.OLD_SKOOL -> "PUNJABI 101"
+                                    MusicTrack.SIDHU_MOOSEWALA -> "LEGEND LIVE 5"
+                                }
                             } else {
                                 "STANDBY"
                             },
