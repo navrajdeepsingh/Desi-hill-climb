@@ -81,7 +81,10 @@ data class GameState(
     val collectedCoins: Set<Int> = emptySet(),
     val collectedFuel: Set<Int> = emptySet(),
     val barrierX: Float = 20f,
-    val lastMilestonePlayed: Int = 0
+    val lastMilestonePlayed: Int = 0,
+    val nitroCharges: Int = 0,
+    val isNitroActive: Boolean = false,
+    val nitroActiveTimeRemaining: Float = 0f
 )
 
 class GameViewModel(
@@ -113,6 +116,9 @@ class GameViewModel(
     private val _unlockedVehicles = MutableStateFlow<Set<String>>(setOf("Buggy"))
     val unlockedVehicles: StateFlow<Set<String>> = _unlockedVehicles.asStateFlow()
 
+    private val _nitroCharges = MutableStateFlow(2)
+    val nitroCharges: StateFlow<Int> = _nitroCharges.asStateFlow()
+
     // Active Game State
     private val _gameState = MutableStateFlow(GameState())
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
@@ -123,10 +129,13 @@ class GameViewModel(
     private var maxCarXReached = 50f
 
     init {
-        // Load unlocked vehicles from shared preferences OR save initial state
+        // Load unlocked vehicles and nitro charges from shared preferences OR save initial state
         val sp = application.getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
         val saved = sp.getStringSet("unlocked_vehicles", setOf("Buggy")) ?: setOf("Buggy")
         _unlockedVehicles.value = saved
+        
+        val nitroCount = sp.getInt("nitro_charges", 2)
+        _nitroCharges.value = nitroCount
     }
 
     private fun persistUnlockedVehicles(vehicles: Set<String>) {
@@ -189,6 +198,60 @@ class GameViewModel(
         }
     }
 
+    // Purchase Nitro for exactly 100 coins
+    fun purchaseNitro() {
+        val profile = playerProfile.value ?: PlayerProfile()
+        if (profile.coins >= 100) {
+            viewModelScope.launch {
+                repository.saveProfile(profile.copy(coins = profile.coins - 100))
+            }
+            val sp = getApplication<Application>().getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
+            val current = sp.getInt("nitro_charges", 2)
+            val updated = current + 1
+            sp.edit().putInt("nitro_charges", updated).apply()
+            _nitroCharges.value = updated
+            // Also update live running state if any active race
+            if (_gameState.value.gameActive) {
+                _gameState.update { it.copy(nitroCharges = updated) }
+            }
+        }
+    }
+
+    // Activate/use Nitro Boost during gameplay drive
+    fun triggerNitro() {
+        val state = _gameState.value
+        if (state.nitroCharges > 0 && !state.isNitroActive && !state.isPaused && !state.isCrashed) {
+            val updatedCharges = state.nitroCharges - 1
+            _gameState.update {
+                it.copy(
+                    nitroCharges = updatedCharges,
+                    isNitroActive = true,
+                    nitroActiveTimeRemaining = 1.6f
+                )
+            }
+            _nitroCharges.value = updatedCharges
+            val sp = getApplication<Application>().getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
+            sp.edit().putInt("nitro_charges", updatedCharges).apply()
+        }
+    }
+
+    // Direct buy and trigger under-the-fly when charges are 0 but user has 100 coins
+    fun buyAndTriggerNitro() {
+        val profile = playerProfile.value ?: PlayerProfile()
+        val state = _gameState.value
+        if (profile.coins >= 100 && !state.isNitroActive && !state.isPaused && !state.isCrashed) {
+            viewModelScope.launch {
+                repository.saveProfile(profile.copy(coins = profile.coins - 100))
+            }
+            _gameState.update {
+                it.copy(
+                    isNitroActive = true,
+                    nitroActiveTimeRemaining = 1.6f
+                )
+            }
+        }
+    }
+
     // Game Core Operations
     fun startNewRun() {
         collectedCoinIds.clear()
@@ -223,7 +286,10 @@ class GameViewModel(
             maxFuel = initialMaxFuel,
             coinsRun = 0,
             distance = 0f,
-            particles = emptyList()
+            particles = emptyList(),
+            nitroCharges = _nitroCharges.value,
+            isNitroActive = false,
+            nitroActiveTimeRemaining = 0f
         )
     }
 
@@ -358,9 +424,26 @@ class GameViewModel(
         val frontContact = frontOverlap > 0f
         val anyGroundContact = rearContact || frontContact
 
+        var newIsNitroActive = state.isNitroActive
+        var newNitroActiveTimeRemaining = state.nitroActiveTimeRemaining
+        if (state.isNitroActive) {
+            newNitroActiveTimeRemaining -= dt
+            if (newNitroActiveTimeRemaining <= 0f) {
+                newIsNitroActive = false
+                newNitroActiveTimeRemaining = 0f
+            }
+        }
+
         var vx = state.carVelocityX
         var vy = state.carVelocityY
         var av = state.carAngularVelocity
+
+        // Apply Nitro Boost thrust force along car's orientation
+        if (newIsNitroActive) {
+            val nitroForce = 2100f // powerful boost
+            vx += nitroForce * cos(mAngle) * dt / vehicle.baseMass
+            vy += (nitroForce * sin(mAngle) + 120f) * dt / vehicle.baseMass // provides some upward lift
+        }
 
         // Shocks parameters
         val stiffness = 160f * suspMultiplier
@@ -409,6 +492,15 @@ class GameViewModel(
                 size = p.initialSize * (p.life / p.maxLife)
             )
         }.filter { it.life > 0 }.toMutableList()
+
+        // Spawn gorgeous thrust fire particles from exhaust pipe if Nitro is active
+        if (newIsNitroActive) {
+            if (Math.random() < 0.72) {
+                val exhaustOffsetX = -halfW * cos(mAngle) - wheelOffsetY * sin(mAngle) - 16f * cos(mAngle)
+                val exhaustOffsetY = -halfW * sin(mAngle) + wheelOffsetY * cos(mAngle) - 16f * sin(mAngle)
+                spawnFireParticle(state.carX + exhaustOffsetX, state.carY + exhaustOffsetY, particlesList)
+            }
+        }
 
         // Base roll rotation delta based strictly on current vehicle speed
         val baseRollDelta = (vx * dt) / wRadius
@@ -640,7 +732,9 @@ class GameViewModel(
                 collectedCoins = collectedCoinIds.toSet(),
                 collectedFuel = collectedFuelIds.toSet(),
                 barrierX = barrierWorldX,
-                lastMilestonePlayed = updatedMilestone
+                lastMilestonePlayed = updatedMilestone,
+                isNitroActive = newIsNitroActive,
+                nitroActiveTimeRemaining = newNitroActiveTimeRemaining
             )
         }
     }
@@ -686,6 +780,29 @@ class GameViewModel(
             alpha = 1f,
             maxLife = 0.6f,
             life = 0.6f
+        )
+        particlesList.add(p)
+    }
+
+    private fun spawnFireParticle(wx: Float, wy: Float, particlesList: MutableList<Particle>) {
+        val vx = -190f - (Math.random() * 140f).toFloat() // blast fire backward strongly
+        val vy = -25f + (Math.random() * 50f).toFloat()
+        val randomColor = when ((Math.random() * 3).toInt()) {
+            0 -> 0xFFFF2200L // glowing red fire core
+            1 -> 0xFFFF8F00L // orange exhaust
+            else -> 0xFFFFEE00L // golden yellow tips
+        }
+        val p = Particle(
+            x = wx,
+            y = wy,
+            vx = vx,
+            vy = vy,
+            color = randomColor,
+            initialSize = 5f + (Math.random() * 9f).toFloat(),
+            size = 1f,
+            alpha = 1.0f,
+            maxLife = 0.42f,
+            life = 0.42f
         )
         particlesList.add(p)
     }

@@ -65,6 +65,7 @@ fun GameScreen(
     val profile by viewModel.playerProfile.collectAsStateWithLifecycle()
     val topRuns by viewModel.topRuns.collectAsStateWithLifecycle()
     val unlockedVehicles by viewModel.unlockedVehicles.collectAsStateWithLifecycle()
+    val nitroCount by viewModel.nitroCharges.collectAsStateWithLifecycle()
 
     var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
     var isRadioOn by remember { mutableStateOf(true) }
@@ -110,7 +111,6 @@ fun GameScreen(
                     id = when (activeTrack) {
                         MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
                         MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
-                        MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
                     }
                 ),
                 contentDescription = "Theme Background",
@@ -119,7 +119,6 @@ fun GameScreen(
                 alpha = when (activeTrack) {
                     MusicTrack.THE_LAST_RIDE -> 0.5f
                     MusicTrack.OLD_SKOOL -> 0.45f
-                    MusicTrack.SIDHU_MOOSEWALA -> 0.55f
                 }
             )
             // Soft overlay to maintain exceptional contrast for readability
@@ -131,7 +130,6 @@ fun GameScreen(
                             alpha = when (activeTrack) {
                                 MusicTrack.THE_LAST_RIDE -> 0.55f
                                 MusicTrack.OLD_SKOOL -> 0.45f
-                                MusicTrack.SIDHU_MOOSEWALA -> 0.50f
                             }
                         )
                     )
@@ -145,12 +143,15 @@ fun GameScreen(
                 activeTrack = activeTrack,
                 onTrackSelected = { selectedTrack ->
                     activeTrack = selectedTrack
-                    LobbyMusicPlayer.setTrackAndRestart(selectedTrack)
                 },
                 onStartRun = { viewModel.startNewRun() },
                 onUpgrade = { viewModel.purchaseUpgrade(it) },
                 onSelectVehicle = { viewModel.selectVehicle(it) },
-                onUnlockVehicle = { viewModel.unlockVehicle(it) }
+                onUnlockVehicle = { viewModel.unlockVehicle(it) },
+                isRadioOn = isRadioOn,
+                onRadioToggle = { isRadioOn = !isRadioOn },
+                nitroCharges = nitroCount,
+                onBuyNitro = { viewModel.purchaseNitro() }
             )
         } else {
             // Active Physics Gameplay View
@@ -184,7 +185,11 @@ fun GarageMenuScreen(
     onStartRun: () -> Unit,
     onUpgrade: (String) -> Unit,
     onSelectVehicle: (String) -> Unit,
-    onUnlockVehicle: (VehicleType) -> Unit
+    onUnlockVehicle: (VehicleType) -> Unit,
+    isRadioOn: Boolean,
+    onRadioToggle: () -> Unit,
+    nitroCharges: Int,
+    onBuyNitro: () -> Unit
 ) {
     var activeTab by remember { mutableStateOf(0) } // 0: Garage, 1: High Scores
 
@@ -305,7 +310,11 @@ fun GarageMenuScreen(
                     onStartRun = onStartRun,
                     onUpgrade = onUpgrade,
                     onSelectVehicle = onSelectVehicle,
-                    onUnlockVehicle = onUnlockVehicle
+                    onUnlockVehicle = onUnlockVehicle,
+                    isRadioOn = isRadioOn,
+                    onRadioToggle = onRadioToggle,
+                    nitroCharges = nitroCharges,
+                    onBuyNitro = onBuyNitro
                 )
             } else {
                 RecordsTab(topRuns = topRuns)
@@ -325,96 +334,155 @@ fun GarageTab(
     onStartRun: () -> Unit,
     onUpgrade: (String) -> Unit,
     onSelectVehicle: (String) -> Unit,
-    onUnlockVehicle: (VehicleType) -> Unit
+    onUnlockVehicle: (VehicleType) -> Unit,
+    isRadioOn: Boolean,
+    onRadioToggle: () -> Unit,
+    nitroCharges: Int,
+    onBuyNitro: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // Sidhu Moosewala Tribute Player & Theme Switcher
+        // Sidhu Moosewala Retro Radio Dashboard Receiver
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0x992B2930)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
-                .border(2.dp, Color(0xFFD0BCFF).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                .border(2.dp, Color(0xFFD4AF37).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
         ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(14.dp)
             ) {
-                // Circular thumbnail of active theme
-                Surface(
-                    shape = CircleShape,
-                    modifier = Modifier.size(60.dp).border(2.dp, Color(0xFFD0BCFF), CircleShape),
-                    color = Color.Black
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Image(
-                        painter = painterResource(
-                            id = when (activeTrack) {
-                                MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
-                                MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
-                                MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
-                            }
-                        ),
-                        contentDescription = "Theme Thumbnail",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "SIDHU MOOSEWALA TRIBUTE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFD0BCFF),
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = when (activeTrack) {
-                            MusicTrack.THE_LAST_RIDE -> "The Last Ride (B&W Photo)"
-                            MusicTrack.OLD_SKOOL -> "Old Skool (Prem Dhillon)"
-                            MusicTrack.SIDHU_MOOSEWALA -> "Sidhu Moose Wala - Legend (Drive Stream)"
-                        },
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Background lyric streaming active",
-                        fontSize = 11.sp,
-                        color = Color(0xFF938F99)
-                    )
-                }
-
-                // Switch Button to cycle theme and music
-                Button(
-                    onClick = {
-                        val nextTrack = when (activeTrack) {
-                            MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
-                            MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
-                            MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Radio,
+                            contentDescription = "Radio",
+                            tint = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF64748B),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "SIDHU MOOSEWALA RAD-STREAM",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD4AF37),
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = "Lobby Dashboard Receiver",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
                         }
-                        onTrackSelected(nextTrack)
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4F378B),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                    }
+
+                    // Power Toggle switch
+                    Button(
+                        onClick = onRadioToggle,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRadioOn) Color(0xFFEF4444) else Color(0xFF475569),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(26.dp)
+                    ) {
+                        Text(
+                            text = if (isRadioOn) "POWER ON" else "STANDBY",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // LCD Receiver Tuner Screen
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF020617)),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFF334155), RoundedCornerShape(6.dp))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = "Switch Track",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Toggle", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (isRadioOn) "TUNED STATION" else "RADIO OFF",
+                                fontSize = 8.sp,
+                                color = Color(0xFF64748B),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (isRadioOn) {
+                                    when (activeTrack) {
+                                        MusicTrack.THE_LAST_RIDE -> "SIDHU FM — The Last Ride"
+                                        MusicTrack.OLD_SKOOL -> "PUNJABI 101 — Old Skool"
+                                    }
+                                } else {
+                                    "PRESS POWER TO TUNER"
+                                },
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (isRadioOn) Color(0xFFFDE047) else Color(0xFF475569),
+                                letterSpacing = 0.5.sp
+                            )
+                            if (isRadioOn) {
+                                Text(
+                                    text = "Playing original direct audio file",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF22C55E),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        // Cycle station button
+                        Button(
+                            onClick = {
+                                val nextTrack = when (activeTrack) {
+                                    MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
+                                    MusicTrack.THE_LAST_RIDE -> MusicTrack.OLD_SKOOL
+                                }
+                                onTrackSelected(nextTrack)
+                            },
+                            enabled = isRadioOn,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF1E293B),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(26.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SkipNext,
+                                contentDescription = "Next Station",
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("TUNE", fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
@@ -512,6 +580,84 @@ fun GarageTab(
                 icon = Icons.Default.LocalGasStation,
                 onLevelUp = { onUpgrade("Fuel") }
             )
+
+            // Nitro Propulsion Engine booster (Price: 100)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFF49454F), RoundedCornerShape(10.dp))
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFF1C1B1F), shape = RoundedCornerShape(8.dp))
+                            .border(1.dp, Color(0xFF49454F), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = Color(0xFFFDE047),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Nitro Rocket Booster",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "CHARGES: $nitroCharges",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFFDE047),
+                                modifier = Modifier
+                                    .background(Color(0xFFFDE047).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        Text(
+                            text = "Unleash extreme acceleration during gameplay! Standard cost: 100 coins.",
+                            fontSize = 11.sp,
+                            color = Color(0xFF938F99),
+                            lineHeight = 13.sp,
+                            maxLines = 2
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    val canAffordNitro = profile.coins >= 100
+                    Button(
+                        onClick = onBuyNitro,
+                        enabled = canAffordNitro,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFDE047),
+                            contentColor = Color(0xFF020617),
+                            disabledContainerColor = Color(0x3349454F),
+                            disabledContentColor = Color(0x66938F99)
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("BUY", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("100 🪙", fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -1151,8 +1297,7 @@ fun ActiveGameplayScreen(
                         onStationChange = {
                             val nextTrack = when (activeTrack) {
                                 MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
-                                MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
-                                MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
+                                MusicTrack.THE_LAST_RIDE -> MusicTrack.OLD_SKOOL
                             }
                             onTrackSelected(nextTrack)
                         }
@@ -1313,6 +1458,112 @@ fun ActiveGameplayScreen(
                 }
                 Text(
                     text = "REVERSE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
+            }
+
+            // MIDDLE NITRO ROCKET THRUSTER CONTROL
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.align(Alignment.Bottom)
+            ) {
+                val hasCharges = gameState.nitroCharges > 0
+                val isActive = gameState.isNitroActive
+                val canInstantRefill = profile.coins >= 100
+
+                Box(
+                    modifier = Modifier
+                        .size(height = 84.dp, width = 84.dp)
+                        .scale(if (isActive) 0.94f else 1.0f)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = when {
+                                    isActive -> listOf(Color(0xFFEA580C), Color(0xFF991B1B))
+                                    hasCharges -> listOf(Color(0xFF2563EB), Color(0xFF1E3A8A))
+                                    canInstantRefill -> listOf(Color(0xFFD4AF37), Color(0xFF78350F))
+                                    else -> listOf(Color(0xFF334155), Color(0xFF1E293B))
+                                }
+                            ),
+                            shape = CircleShape
+                        )
+                        .border(
+                            width = 2.dp,
+                            color = when {
+                                isActive -> Color(0xFFF97316)
+                                hasCharges -> Color(0xFF3B82F6)
+                                canInstantRefill -> Color(0xFFFDE047)
+                                else -> Color(0xFF475569)
+                            },
+                            shape = CircleShape
+                        )
+                        .shadow(
+                            elevation = if (isActive) 3.dp else 7.dp,
+                            shape = CircleShape
+                        )
+                        .clickable {
+                            if (hasCharges) {
+                                viewModel.triggerNitro()
+                            } else if (canInstantRefill) {
+                                viewModel.buyAndTriggerNitro()
+                            }
+                        }
+                        .testTag("nitro_pedal"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = "Nitro",
+                            tint = when {
+                                isActive -> Color(0xFFFDE047)
+                                hasCharges -> Color(0xFF60A5FA)
+                                canInstantRefill -> Color(0xFFFBCFE8)
+                                else -> Color(0xFF94A3B8)
+                            },
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = when {
+                                isActive -> "BOOSTING"
+                                hasCharges -> "NITRO"
+                                canInstantRefill -> "REFILL"
+                                else -> "EMPTY"
+                            },
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        if (isActive) {
+                            Text(
+                                text = "%.1fs".format(gameState.nitroActiveTimeRemaining),
+                                color = Color(0xFFFDE047),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        } else {
+                            Text(
+                                text = when {
+                                    hasCharges -> "(${gameState.nitroCharges} left)"
+                                    canInstantRefill -> "100 🪙"
+                                    else -> "No Coins"
+                                },
+                                color = if (canInstantRefill && !hasCharges) Color(0xFFFDE047) else Color.White.copy(alpha = 0.8f),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = "ROCKET BOOST",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.7f),
@@ -1915,25 +2166,47 @@ fun GameCanvas(
 
                     // A. Rear-mounted spare wheel (on the back wall)
                     drawCircle(
+                        color = Color.Black,
+                        radius = 18.5f,
+                        center = Offset(screenCarX - 58f, screenCarY - 11f)
+                    )
+                    drawCircle(
                         color = tireColor,
-                        radius = 16f,
+                        radius = 14.5f,
+                        center = Offset(screenCarX - 58f, screenCarY - 11f)
+                    )
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 9.5f,
                         center = Offset(screenCarX - 58f, screenCarY - 11f)
                     )
                     drawCircle(
                         color = Color(0xFF475569), // Steel inner wheel hub
-                        radius = 8f,
+                        radius = 7f,
                         center = Offset(screenCarX - 58f, screenCarY - 11f)
                     )
                     // Hub bolts
                     drawCircle(color = Color.White, radius = 1.5f, center = Offset(screenCarX - 58f, screenCarY - 11f))
                     
-                    // B. Rear Roll Cage Bar / Windshield frame
+                    // B. Rear Roll Cage Bar / Windshield frame (Sketched high-contrast outlines)
                     // Roll bar backing up driver
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenCarX - 35f, screenCarY - 14f),
+                        end = Offset(screenCarX - 35f, screenCarY - 39f),
+                        strokeWidth = 6.5f
+                    )
                     drawLine(
                         color = ironColor,
                         start = Offset(screenCarX - 35f, screenCarY - 14f),
                         end = Offset(screenCarX - 35f, screenCarY - 38f),
                         strokeWidth = 3.5f
+                    )
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenCarX - 35f, screenCarY - 39f),
+                        end = Offset(screenCarX - 49f, screenCarY - 14f),
+                        strokeWidth = 5.5f
                     )
                     drawLine(
                         color = ironColor,
@@ -1942,6 +2215,12 @@ fun GameCanvas(
                         strokeWidth = 3.0f
                     )
                     // Front Windshield Frame (tilted forward slab slightly)
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(screenCarX + 16.5f, screenCarY - 14.5f),
+                        end = Offset(screenCarX + 11.5f, screenCarY - 39.5f),
+                        strokeWidth = 6.5f
+                    )
                     drawLine(
                         color = ironColor,
                         start = Offset(screenCarX + 16f, screenCarY - 15f),
@@ -1957,9 +2236,15 @@ fun GameCanvas(
                         close()
                     }
                     drawPath(glassPath, Color(0x7FBAE6FD))
-
+ 
                     // C. Jerry cans mounted at the rear
-                    // Red jerry can
+                    // Red jerry can with black outline background
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 49.5f, screenCarY - 25.5f),
+                        size = Size(11f, 16f),
+                        cornerRadius = CornerRadius(3f)
+                    )
                     drawRoundRect(
                         color = Color(0xFF991B1B), // Red jerry can
                         topLeft = Offset(screenCarX - 48f, screenCarY - 24f),
@@ -1969,9 +2254,15 @@ fun GameCanvas(
                     // Jerry can steel handle & bracket
                     drawLine(Color.Black, Offset(screenCarX - 46f, screenCarY - 24f), Offset(screenCarX - 46f, screenCarY - 24f), strokeWidth = 1.5f)
                     drawLine(Color.Black, Offset(screenCarX - 42f, screenCarY - 24f), Offset(screenCarX - 42f, screenCarY - 24f), strokeWidth = 1.5f)
-
-                    // D. Olive Green Main Cabin & Body Tub
+ 
+                    // D. Olive Green Main Cabin & Body Tub with bold outlines
                     // Bottom main horizontal plate
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 54f, screenCarY - 17f),
+                        size = Size(104f, 19f),
+                        cornerRadius = CornerRadius(4.5f)
+                    )
                     drawRoundRect(
                         color = armyGreenMajor,
                         topLeft = Offset(screenCarX - 52f, screenCarY - 15f),
@@ -1981,6 +2272,12 @@ fun GameCanvas(
                     
                     // Rear quarter higher wall panel
                     drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(screenCarX - 54f, screenCarY - 21f),
+                        size = Size(40f, 9f),
+                        cornerRadius = CornerRadius(3f)
+                    )
+                    drawRoundRect(
                         color = armyGreenShadow,
                         topLeft = Offset(screenCarX - 52f, screenCarY - 19f),
                         size = Size(36f, 5f),
@@ -1989,14 +2286,23 @@ fun GameCanvas(
                     
                     // Front hood block (the engine nose)
                     val hoodPath = Path().apply {
-                        moveTo(screenCarX + 10f, screenCarY - 15f) // driver cowl
-                        lineTo(screenCarX + 14f, screenCarY - 22f) // hood starting rise panel
-                        lineTo(screenCarX + 46f, screenCarY - 22f) // front radiator nose top
-                        lineTo(screenCarX + 46f, screenCarY)       // front grille nose bottom
+                        moveTo(screenCarX + 10f, screenCarY - 15f)
+                        lineTo(screenCarX + 14f, screenCarY - 22f)
+                        lineTo(screenCarX + 46f, screenCarY - 22f)
+                        lineTo(screenCarX + 46f, screenCarY)
                         lineTo(screenCarX + 10f, screenCarY)
                         close()
                     }
-                    drawPath(hoodPath, armyGreenMajor)
+                    drawPath(hoodPath, Color.Black)
+                    val innerHoodPath = Path().apply {
+                        moveTo(screenCarX + 11f, screenCarY - 14.5f)
+                        lineTo(screenCarX + 14.5f, screenCarY - 20.5f)
+                        lineTo(screenCarX + 44.5f, screenCarY - 20.5f)
+                        lineTo(screenCarX + 44.5f, screenCarY - 0.5f)
+                        lineTo(screenCarX + 11f, screenCarY - 0.5f)
+                        close()
+                    }
+                    drawPath(innerHoodPath, armyGreenMajor)
                     // Hood highlight line
                     drawLine(
                         color = armyGreenLight,
@@ -2448,26 +2754,42 @@ fun GameCanvas(
             }
 
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
-            if (activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL || activeTrack == MusicTrack.SIDHU_MOOSEWALA || vehicle.id == "Buggy") {
+            // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
+            if (activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL || vehicle.id == "Buggy") {
                 val coatColor = if (vehicle.id == "Buggy") Color(0xFF4B5320) else Color(0xFFDC2626)
-                val turbanColor = if (vehicle.id == "Buggy") Color(0xFF2A3D2A) else Color(0xFFEA580C)
-                val shadowTurban = if (vehicle.id == "Buggy") Color(0xFF1B2C1C) else Color(0xFFC2410C)
+                val turbanColor = if (vehicle.id == "Buggy") Color(0xFF2E6F40) else Color(0xFFEA580C)
+                val shadowTurban = if (vehicle.id == "Buggy") Color(0xFF1B4324) else Color(0xFFC2410C)
 
-                // 1. Driver coat (Kurta style matching shirt/jacket)
+                // 1. Driver coat (Kurta style matching shirt/jacket) - outlined
+                drawCircle(
+                    color = Color.Black,
+                    radius = 10f,
+                    center = Offset(screenCarX - 2f, screenCarY - 17f)
+                )
                 drawCircle(
                     color = coatColor,
-                    radius = 8f,
+                    radius = 7.5f,
                     center = Offset(screenCarX - 2f, screenCarY - 17f)
                 )
                 
-                // 2. Full Black Beard (Underlay)
+                // 2. Full Black Beard (Underlay with outline)
+                drawCircle(
+                    color = Color.Black,
+                    radius = 12f,
+                    center = Offset(screenCarX - 2f, screenCarY - 24f)
+                )
                 drawCircle(
                     color = Color(0xFF0F172A),
                     radius = 9.5f,
                     center = Offset(screenCarX - 2f, screenCarY - 24f)
                 )
                 
-                // 3. Face Skin core
+                // 3. Face Skin core - outlined
+                drawCircle(
+                    color = Color.Black,
+                    radius = 10f,
+                    center = Offset(screenCarX - 2f, screenCarY - 26f)
+                )
                 drawCircle(
                     color = Color(0xFFFDBA74),
                     radius = 7.5f,
@@ -2475,6 +2797,11 @@ fun GameCanvas(
                 )
                 
                 // 4. Hair backing
+                drawCircle(
+                    color = Color.Black,
+                    radius = 5.5f,
+                    center = Offset(screenCarX - 8f, screenCarY - 26f)
+                )
                 drawCircle(
                     color = Color(0xFF0F172A),
                     radius = 3.5f,
@@ -2488,8 +2815,13 @@ fun GameCanvas(
                 }
                 drawPath(
                     path = rightMustache,
+                    color = Color.Black,
+                    style = Stroke(width = 3.8f, cap = StrokeCap.Round)
+                )
+                drawPath(
+                    path = rightMustache,
                     color = Color(0xFF0F172A),
-                    style = Stroke(width = 2.2f, cap = StrokeCap.Round)
+                    style = Stroke(width = 2.4f, cap = StrokeCap.Round)
                 )
                 val leftMustache = Path().apply {
                     moveTo(screenCarX - 2f, screenCarY - 24.5f)
@@ -2497,15 +2829,30 @@ fun GameCanvas(
                 }
                 drawPath(
                     path = leftMustache,
+                    color = Color.Black,
+                    style = Stroke(width = 3.8f, cap = StrokeCap.Round)
+                )
+                drawPath(
+                    path = leftMustache,
                     color = Color(0xFF0F172A),
-                    style = Stroke(width = 2.2f, cap = StrokeCap.Round)
+                    style = Stroke(width = 2.4f, cap = StrokeCap.Round)
                 )
 
                 // 6. Styled Black Sunglasses (Aviators)
                 drawCircle(
+                    color = Color.Black,
+                    radius = 4f,
+                    center = Offset(screenCarX - 1.5f, screenCarY - 28f)
+                )
+                drawCircle(
                     color = Color(0xFF000000),
                     radius = 2.5f,
                     center = Offset(screenCarX - 1.5f, screenCarY - 28f)
+                )
+                drawCircle(
+                    color = Color.Black,
+                    radius = 4f,
+                    center = Offset(screenCarX + 2.5f, screenCarY - 28f)
                 )
                 drawCircle(
                     color = Color(0xFF000000),
@@ -2516,25 +2863,50 @@ fun GameCanvas(
                     color = Color.Black,
                     start = Offset(screenCarX - 4f, screenCarY - 28f),
                     end = Offset(screenCarX + 4f, screenCarY - 28f),
-                    strokeWidth = 1.2f
+                    strokeWidth = 2.0f
                 )
 
-                // 7. Sikh Turban (Dastar)
+                // 7. Sikh Turban (Dastar) with beautiful black outlines
+                drawOval(
+                    color = Color.Black,
+                    topLeft = Offset(screenCarX - 14.5f, screenCarY - 37.5f),
+                    size = Size(25f, 14f)
+                )
                 drawOval(
                     color = turbanColor,
                     topLeft = Offset(screenCarX - 12f, screenCarY - 35f),
                     size = Size(20f, 9f)
+                )
+
+                drawOval(
+                    color = Color.Black,
+                    topLeft = Offset(screenCarX - 12.5f, screenCarY - 39.5f),
+                    size = Size(23f, 14f)
                 )
                 drawOval(
                     color = shadowTurban,
                     topLeft = Offset(screenCarX - 10f, screenCarY - 37f),
                     size = Size(18f, 9f)
                 )
+
+                drawOval(
+                    color = Color.Black,
+                    topLeft = Offset(screenCarX - 9.5f, screenCarY - 42.5f),
+                    size = Size(19f, 13f)
+                )
                 drawOval(
                     color = turbanColor,
                     topLeft = Offset(screenCarX - 7f, screenCarY - 40f),
                     size = Size(14f, 8f)
                 )
+
+                val peakOutlinePath = Path().apply {
+                    moveTo(screenCarX - 5f, screenCarY - 39f)
+                    lineTo(screenCarX - 1f, screenCarY - 45f)
+                    lineTo(screenCarX + 4f, screenCarY - 39f)
+                    close()
+                }
+                drawPath(peakOutlinePath, Color.Black)
                 val peakPath = Path().apply {
                     moveTo(screenCarX - 3f, screenCarY - 40f)
                     lineTo(screenCarX - 1f, screenCarY - 43f)
@@ -2544,11 +2916,21 @@ fun GameCanvas(
                 drawPath(peakPath, turbanColor)
 
             } else {
-                // DEFAULT HELMET CHARACTER
+                // DEFAULT HELMET CHARACTER - outlined
+                drawCircle(
+                    color = Color.Black,
+                    radius = 9.5f,
+                    center = Offset(screenCarX - 2f, screenCarY - 18f)
+                )
                 drawCircle(
                     color = Color(0xFF334155), // Driver coat
                     radius = 7f,
                     center = Offset(screenCarX - 2f, screenCarY - 18f)
+                )
+                drawCircle(
+                    color = Color.Black,
+                    radius = 11.5f,
+                    center = Offset(screenCarX - 2f, screenCarY - 26f)
                 )
                 drawCircle(
                     color = Color(0xFFD0BCFF), // Immersive Lavender helmet
@@ -2747,7 +3129,6 @@ fun DashboardRadioPlayer(
                                 when (activeTrack) {
                                     MusicTrack.THE_LAST_RIDE -> "SIDHU FM 94.4"
                                     MusicTrack.OLD_SKOOL -> "PUNJABI 101"
-                                    MusicTrack.SIDHU_MOOSEWALA -> "LEGEND LIVE 5"
                                 }
                             } else {
                                 "STANDBY"
