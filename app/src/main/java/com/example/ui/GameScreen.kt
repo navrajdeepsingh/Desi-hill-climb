@@ -124,6 +124,7 @@ fun GameScreen(
                         MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
                         MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
                         MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
+                        MusicTrack.LEGEND -> R.drawable.img_sidhu_son_bg
                     }
                 ),
                 contentDescription = "Theme Background",
@@ -133,6 +134,7 @@ fun GameScreen(
                     MusicTrack.THE_LAST_RIDE -> 0.5f
                     MusicTrack.OLD_SKOOL -> 0.45f
                     MusicTrack.SIDHU_MOOSEWALA -> 0.55f
+                    MusicTrack.LEGEND -> 0.50f
                 }
             )
             // Soft overlay to maintain exceptional contrast for readability
@@ -145,6 +147,7 @@ fun GameScreen(
                                 MusicTrack.THE_LAST_RIDE -> 0.55f
                                 MusicTrack.OLD_SKOOL -> 0.45f
                                 MusicTrack.SIDHU_MOOSEWALA -> 0.50f
+                                MusicTrack.LEGEND -> 0.50f
                             }
                         )
                     )
@@ -453,6 +456,7 @@ fun GarageTab(
                                         MusicTrack.THE_LAST_RIDE -> "SIDHU FM — The Last Ride"
                                         MusicTrack.OLD_SKOOL -> "PUNJABI 101 — Old Skool"
                                         MusicTrack.SIDHU_MOOSEWALA -> "LEGEND FM — Sidhu Moose Wala"
+                                        MusicTrack.LEGEND -> "LEGEND FM — Legend"
                                     }
                                 } else {
                                     "PRESS POWER TO TUNER"
@@ -478,7 +482,8 @@ fun GarageTab(
                                 val nextTrack = when (activeTrack) {
                                     MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
                                     MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
-                                    MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
+                                    MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.LEGEND
+                                    MusicTrack.LEGEND -> MusicTrack.OLD_SKOOL
                                 }
                                 onTrackSelected(nextTrack)
                             },
@@ -1315,7 +1320,8 @@ fun ActiveGameplayScreen(
                             val nextTrack = when (activeTrack) {
                                 MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
                                 MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
-                                MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.OLD_SKOOL
+                                MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.LEGEND
+                                MusicTrack.LEGEND -> MusicTrack.OLD_SKOOL
                             }
                             onTrackSelected(nextTrack)
                         }
@@ -2900,7 +2906,7 @@ fun GameCanvas(
 
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
-            if ((activeTrack == MusicTrack.THE_LAST_RIDE || activeTrack == MusicTrack.OLD_SKOOL) && vehicle.id != "Buggy") {
+            if (vehicle.id != "Buggy") {
                 val coatColor = if (vehicle.id == "Buggy") Color(0xFF4B5320) else Color(0xFFDC2626)
                 val turbanColor = if (vehicle.id == "Buggy") Color(0xFF2E6F40) else Color(0xFFEA580C)
                 val shadowTurban = if (vehicle.id == "Buggy") Color(0xFF1B4324) else Color(0xFFC2410C)
@@ -3427,6 +3433,7 @@ fun DashboardRadioPlayer(
                                     MusicTrack.THE_LAST_RIDE -> "SIDHU FM 94.4"
                                     MusicTrack.OLD_SKOOL -> "PUNJABI 101"
                                     MusicTrack.SIDHU_MOOSEWALA -> "LEGEND LIVE 5"
+                                    MusicTrack.LEGEND -> "LEGEND LIVE 9"
                                 }
                             } else {
                                 "STANDBY"

@@ -8,7 +8,8 @@ import kotlinx.coroutines.*
 enum class MusicTrack {
     OLD_SKOOL,
     THE_LAST_RIDE,
-    SIDHU_MOOSEWALA
+    SIDHU_MOOSEWALA,
+    LEGEND
 }
 
 object LobbyMusicPlayer {
@@ -28,8 +29,9 @@ object LobbyMusicPlayer {
 
         val streamUrl = when (currentTrack) {
             MusicTrack.OLD_SKOOL -> "https://archive.org/download/sidhu-moose-wala-all-songs/Old%20Skool.mp3"
-            MusicTrack.THE_LAST_RIDE -> "https://archive.org/download/sidhu-moose-wala-all-songs/The%20Last%20Ride.mp3"
+            MusicTrack.THE_LAST_RIDE -> "https://s320.djpunjab.is/data/128/51922/299856/The%20Last%20Ride%20-%20Sidhu%20Moose%20Wala.mp3"
             MusicTrack.SIDHU_MOOSEWALA -> "https://docs.google.com/uc?export=download&id=16llwWvDDdCZ2GBwWlirBFMlpUVMpHLKB"
+            MusicTrack.LEGEND -> "https://archive.org/download/y-2mate.com-sidhu-moose-wala-juke-box-same-beef-tochan-dhakka-bambiha-bole-old-skool-dollar-legend/y2mate.com+-+LEGEND++SIDHU+MOOSE+WALA++The+Kidd++Gold+Media++Latest+Punjabi+Songs+2020.mp3"
         }
 
         // Start online MediaPlayer stream.
