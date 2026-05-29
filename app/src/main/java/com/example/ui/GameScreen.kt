@@ -70,38 +70,41 @@ fun GameScreen(
     var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
     var isRadioOn by remember { mutableStateOf(true) }
 
-    // Lifecycle-aware background/radio music master controller (Stops active synth audio when app is closed / backgrounded)
+    // Keep lobby music playing / stopped based on state changes smoothly
+    LaunchedEffect(gameState.gameActive, activeTrack, isRadioOn) {
+        if (!gameState.gameActive) {
+            LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+        } else if (isRadioOn) {
+            LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+        } else {
+            LobbyMusicPlayer.stop()
+        }
+    }
+
+    // Lifecycle-aware background/radio music master controller (Stops/pauses active audio when app is closed / backgrounded)
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, gameState.gameActive, activeTrack, isRadioOn) {
+    DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
                     if (!gameState.gameActive) {
                         LobbyMusicPlayer.setTrackAndRestart(activeTrack)
-                    } else if (isRadioOn) {
-                        LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+                    } else {
+                        if (isRadioOn) {
+                            LobbyMusicPlayer.setTrackAndRestart(activeTrack)
+                        }
+                        DrivingSoundPlayer.resume()
                     }
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
                     LobbyMusicPlayer.stop()
                     MilestoneSoundPlayer.stop()
-                    DrivingSoundPlayer.stop()
+                    DrivingSoundPlayer.pause()
                 }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-
-        // Force-refresh or start music immediately if lifecycle is already resumed (e.g. initial launch and active state transitions)
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
-            if (!gameState.gameActive) {
-                LobbyMusicPlayer.setTrackAndRestart(activeTrack)
-            } else if (isRadioOn) {
-                LobbyMusicPlayer.setTrackAndRestart(activeTrack)
-            } else {
-                LobbyMusicPlayer.stop()
-            }
-        }
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
@@ -1397,7 +1400,7 @@ fun ActiveGameplayScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
+                .padding(start = 0.dp, end = 16.dp, top = 0.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {

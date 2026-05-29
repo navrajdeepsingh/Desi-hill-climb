@@ -90,7 +90,7 @@ object DrivingSoundPlayer {
                     }
 
                     p1.setOnPreparedListener { mp ->
-                        synchronized(DrivingSoundPlayer) {
+                        synchronized(this@DrivingSoundPlayer) {
                             if (isPlaying && player1 == mp) {
                                 Log.d(TAG, "Driving Sound 1 (Engine) streaming successfully!")
                                 isP1Active = true
@@ -107,7 +107,7 @@ object DrivingSoundPlayer {
 
                     p1.setOnErrorListener { mp, what, extra ->
                         Log.e(TAG, "Driving Sound 1 stream failed (what=$what, extra=$extra). Falling back to synth.")
-                        synchronized(DrivingSoundPlayer) {
+                        synchronized(this@DrivingSoundPlayer) {
                             isP1Active = false
                             if (player1 == mp) {
                                 player1 = null
@@ -119,7 +119,7 @@ object DrivingSoundPlayer {
                     }
 
                     p2.setOnPreparedListener { mp ->
-                        synchronized(DrivingSoundPlayer) {
+                        synchronized(this@DrivingSoundPlayer) {
                             if (isPlaying && player2 == mp) {
                                 Log.d(TAG, "Driving Sound 2 (Booster) streaming successfully!")
                                 isP2Active = true
@@ -136,7 +136,7 @@ object DrivingSoundPlayer {
 
                     p2.setOnErrorListener { mp, what, extra ->
                         Log.e(TAG, "Driving Sound 2 stream failed (some codes=$what, $extra).")
-                        synchronized(DrivingSoundPlayer) {
+                        synchronized(this@DrivingSoundPlayer) {
                             isP2Active = false
                             if (player2 == mp) {
                                 player2 = null
@@ -146,13 +146,25 @@ object DrivingSoundPlayer {
                         true
                     }
 
-                    synchronized(DrivingSoundPlayer) {
-                        player1 = p1
-                        player2 = p2
+                    synchronized(this@DrivingSoundPlayer) {
+                        if (isPlaying) {
+                            player1 = p1
+                            player2 = p2
+                            try {
+                                p1.prepareAsync()
+                                p2.prepareAsync()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed calling prepareAsync: ${e.message}")
+                                p1.release()
+                                p2.release()
+                                player1 = null
+                                player2 = null
+                            }
+                        } else {
+                            p1.release()
+                            p2.release()
+                        }
                     }
-
-                    p1.prepareAsync()
-                    p2.prepareAsync()
 
                     // Wait 4 seconds for streams to begin; fallback instantly if they take too long
                     delay(4000)

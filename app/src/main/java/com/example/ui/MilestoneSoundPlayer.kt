@@ -59,7 +59,7 @@ object MilestoneSoundPlayer {
                     }
 
                     mp.setOnPreparedListener { player ->
-                        synchronized(MilestoneSoundPlayer) {
+                        synchronized(this@MilestoneSoundPlayer) {
                             if (mediaPlayer == player) {
                                 Log.d(TAG, "Milestone GDrive sound pre-buffered and ready to play!")
                                 isReady = true
@@ -72,7 +72,7 @@ object MilestoneSoundPlayer {
 
                     mp.setOnErrorListener { player, what, extra ->
                         Log.e(TAG, "Milestone sound MediaPlayer preparation failed: what=$what, extra=$extra. Synthesizer fallback activated.")
-                        synchronized(MilestoneSoundPlayer) {
+                        synchronized(this@MilestoneSoundPlayer) {
                             isReady = false
                             isPreparing = false
                             if (mediaPlayer == player) {
@@ -83,10 +83,22 @@ object MilestoneSoundPlayer {
                         true
                     }
 
-                    synchronized(MilestoneSoundPlayer) {
-                        mediaPlayer = mp
+                    synchronized(this@MilestoneSoundPlayer) {
+                        if (isPreparing) {
+                            mediaPlayer = mp
+                            try {
+                                mp.prepareAsync()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed preparing GDrive milestone stream: ${e.message}")
+                                mp.release()
+                                mediaPlayer = null
+                                isReady = false
+                                isPreparing = false
+                            }
+                        } else {
+                            mp.release()
+                        }
                     }
-                    mp.prepareAsync()
                 } catch (e: Exception) {
                     Log.e(TAG, "Exception preparing custom milestone player: ${e.message}")
                     synchronized(MilestoneSoundPlayer) {

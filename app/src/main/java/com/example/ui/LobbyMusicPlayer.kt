@@ -70,7 +70,7 @@ object LobbyMusicPlayer {
                     }
 
                     mp.setOnPreparedListener { player ->
-                        synchronized(LobbyMusicPlayer) {
+                        synchronized(this@LobbyMusicPlayer) {
                             if (isPlaying && mediaPlayer == player) {
                                 Log.d(TAG, "Live direct Sidhu Moose Wala stream loaded successfully! Playing studio track.")
                                 isStreamingActive = true
@@ -89,7 +89,7 @@ object LobbyMusicPlayer {
 
                     mp.setOnErrorListener { player, what, extra ->
                         Log.e(TAG, "MediaPlayer streaming failed: what=$what, extra=$extra.")
-                        synchronized(LobbyMusicPlayer) {
+                        synchronized(this@LobbyMusicPlayer) {
                             isStreamingActive = false
                             if (mediaPlayer == player) {
                                 mediaPlayer = null
@@ -101,10 +101,21 @@ object LobbyMusicPlayer {
                         true
                     }
 
-                    synchronized(LobbyMusicPlayer) {
-                        mediaPlayer = mp
+                    synchronized(this@LobbyMusicPlayer) {
+                        if (isPlaying) {
+                            mediaPlayer = mp
+                            try {
+                                mp.prepareAsync()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to prepareAsync: ${e.message}")
+                                mp.release()
+                                mediaPlayer = null
+                                isStreamingActive = false
+                            }
+                        } else {
+                            mp.release()
+                        }
                     }
-                    mp.prepareAsync()
                 } catch (e: Exception) {
                     Log.e(TAG, "Exception during media setup: ${e.message}")
                     isStreamingActive = false
