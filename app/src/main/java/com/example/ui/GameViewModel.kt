@@ -226,7 +226,7 @@ class GameViewModel(
                 it.copy(
                     nitroCharges = updatedCharges,
                     isNitroActive = true,
-                    nitroActiveTimeRemaining = 1.0f
+                    nitroActiveTimeRemaining = 0.3f
                 )
             }
             _nitroCharges.value = updatedCharges
@@ -246,7 +246,7 @@ class GameViewModel(
             _gameState.update {
                 it.copy(
                     isNitroActive = true,
-                    nitroActiveTimeRemaining = 1.0f
+                    nitroActiveTimeRemaining = 0.3f
                 )
             }
         }
@@ -673,11 +673,11 @@ class GameViewModel(
         val headWorldY = newCarY + headLocalX * sin(newCarAngle) + headLocalY * cos(newCarAngle)
         val groundHeightAtHead = getTerrainHeight(headWorldX)
 
-        val isHeadHittingGround = displayDistance > 0.8f && (headWorldY <= groundHeightAtHead + 2.0f)
+        val isHeadHittingGround = displayDistance > 3.0f && (headWorldY <= groundHeightAtHead - 4.0f)
 
-        val isHeadCrashed = isHeadHittingGround || (displayDistance > 0.8f && (
-            (newCarY <= centerGroundY + 12f && abs(normAngle) > PI / 1.9f) ||
-            (abs(normAngle) > PI / 1.3f && anyGroundContact)
+        val isHeadCrashed = isHeadHittingGround || (displayDistance > 3.0f && (
+            (newCarY <= centerGroundY + 10f && abs(normAngle) > PI / 1.35f) ||
+            (abs(normAngle) > PI / 1.2f && anyGroundContact)
         ))
 
         if (isHeadCrashed) {

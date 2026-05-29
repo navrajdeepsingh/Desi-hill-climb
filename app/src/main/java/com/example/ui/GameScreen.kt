@@ -1398,15 +1398,23 @@ fun ActiveGameplayScreen(
                 .widthIn(max = 800.dp)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 32.dp, vertical = 20.dp),
+                .padding(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
             // BRAKE PEDAL (Brake & Reverse)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.align(Alignment.Bottom)
             ) {
+                Text(
+                    text = "REVERSE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
                 // Realistic Red Brake Pedal (Wider, medium height)
                 Box(
                     modifier = Modifier
@@ -1480,13 +1488,6 @@ fun ActiveGameplayScreen(
                         )
                     }
                 }
-                Text(
-                    text = "REVERSE",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.7f),
-                    letterSpacing = 1.sp
-                )
             }
 
             // MIDDLE NITRO ROCKET THRUSTER CONTROL
@@ -1499,6 +1500,13 @@ fun ActiveGameplayScreen(
                 val isActive = gameState.isNitroActive
                 val canInstantRefill = profile.coins >= 100
 
+                Text(
+                    text = "ROCKET BOOST",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
                 Box(
                     modifier = Modifier
                         .size(height = 84.dp, width = 84.dp)
@@ -1566,7 +1574,7 @@ fun ActiveGameplayScreen(
                             fontWeight = FontWeight.Black
                         )
                         if (isActive) {
-                            Text(
+                             Text(
                                 text = "%.1fs".format(gameState.nitroActiveTimeRemaining),
                                 color = Color(0xFFFDE047),
                                 fontSize = 10.sp,
@@ -1586,20 +1594,21 @@ fun ActiveGameplayScreen(
                         }
                     }
                 }
-                Text(
-                    text = "ROCKET BOOST",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.7f),
-                    letterSpacing = 1.sp
-                )
             }
 
             // GAS PEDAL (Accelerate)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.align(Alignment.Bottom)
             ) {
+                Text(
+                    text = "ACCEL",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
                 // Realistic Green Gas Pedal (Narrower, taller profile)
                 Box(
                     modifier = Modifier
@@ -1674,13 +1683,6 @@ fun ActiveGameplayScreen(
                         )
                     }
                 }
-                Text(
-                    text = "ACCEL",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.7f),
-                    letterSpacing = 1.sp
-                )
             }
         }
 
@@ -2906,7 +2908,7 @@ fun GameCanvas(
 
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
             // DRAW COOL DRIVER HELMET OR CUSTOM CHARACTER (SIDHU MOOSEWALA WITH TURBAN, MUSTACHE & BEARD) inside cabin area
-            if (vehicle.id != "Buggy") {
+            if (true) {
                 val coatColor = if (vehicle.id == "Buggy") Color(0xFF4B5320) else Color(0xFFDC2626)
                 val turbanColor = if (vehicle.id == "Buggy") Color(0xFF2E6F40) else Color(0xFFEA580C)
                 val shadowTurban = if (vehicle.id == "Buggy") Color(0xFF1B4324) else Color(0xFFC2410C)

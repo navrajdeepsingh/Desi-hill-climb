@@ -30,8 +30,8 @@ object LobbyMusicPlayer {
         val streamUrl = when (currentTrack) {
             MusicTrack.OLD_SKOOL -> "https://archive.org/download/sidhu-moose-wala-all-songs/Old%20Skool.mp3"
             MusicTrack.THE_LAST_RIDE -> "https://s320.djpunjab.is/data/128/51922/299856/The%20Last%20Ride%20-%20Sidhu%20Moose%20Wala.mp3"
-            MusicTrack.SIDHU_MOOSEWALA -> "https://docs.google.com/uc?export=download&id=16llwWvDDdCZ2GBwWlirBFMlpUVMpHLKB"
-            MusicTrack.LEGEND -> "https://archive.org/download/y-2mate.com-sidhu-moose-wala-juke-box-same-beef-tochan-dhakka-bambiha-bole-old-skool-dollar-legend/y2mate.com+-+LEGEND++SIDHU+MOOSE+WALA++The+Kidd++Gold+Media++Latest+Punjabi+Songs+2020.mp3"
+            MusicTrack.SIDHU_MOOSEWALA -> "https://archive.org/download/y-2mate.com-sidhu-moose-wala-juke-box-same-beef-tochan-dhakka-bambiha-bole-old-skool-dollar-legend/y2mate.com%20-%20295%20Official%20Audio%20%20Sidhu%20Moose%20Wala%20%20The%20Kidd%20%20Moosetape.mp3"
+            MusicTrack.LEGEND -> "https://archive.org/download/y-2mate.com-sidhu-moose-wala-juke-box-same-beef-tochan-dhakka-bambiha-bole-old-skool-dollar-legend/y2mate.com%20-%20LEGEND%20%20SIDHU%20MOOSE%20WALA%20%20The%20Kidd%20%20Gold%20Media%20%20Latest%20Punjabi%20Songs%202020.mp3"
         }
 
         // Start online MediaPlayer stream.
