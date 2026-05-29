@@ -57,6 +57,8 @@ import kotlin.math.*
 
 @Composable
 fun VideoBackground(videoFile: java.io.File, modifier: Modifier = Modifier) {
+    var viewLocal by remember { mutableStateOf<android.widget.VideoView?>(null) }
+
     androidx.compose.ui.viewinterop.AndroidView(
         factory = { context ->
             android.widget.VideoView(context).apply {
@@ -68,21 +70,40 @@ fun VideoBackground(videoFile: java.io.File, modifier: Modifier = Modifier) {
                         android.util.Log.e("VideoBackground", "Error muting video volume: ${e.message}")
                     }
                 }
-                setVideoPath(videoFile.absolutePath)
-                start()
+                setOnErrorListener { mp, what, extra ->
+                    android.util.Log.e("VideoBackground", "Error playing video: what=$what, extra=$extra")
+                    true // handled! prevents dialog popup or crash on video codec/file errors
+                }
+                try {
+                    setVideoPath(videoFile.absolutePath)
+                    start()
+                } catch (e: Exception) {
+                    android.util.Log.e("VideoBackground", "Error setting path: ${e.message}")
+                }
+                viewLocal = this
             }
         },
-        update = { videoView ->
+        update = { view ->
             try {
-                if (!videoView.isPlaying) {
-                    videoView.start()
+                if (!view.isPlaying) {
+                    view.start()
                 }
             } catch (e: Exception) {
-                android.util.Log.e("VideoBackground", "Error starting videoview: ${e.message}")
+                android.util.Log.e("VideoBackground", "Error in AndroidView update: ${e.message}")
             }
         },
         modifier = modifier
     )
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                viewLocal?.stopPlayback()
+            } catch (e: Exception) {
+                android.util.Log.e("VideoBackground", "Error stopping VideoView: ${e.message}")
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -177,7 +198,7 @@ fun GameScreen(
                             MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
                             MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
                             MusicTrack.LEGEND -> R.drawable.img_sidhu_son_bg
-                            MusicTrack.MUSTANG -> R.drawable.img_prem_dhillon
+                            MusicTrack.MUSTANG -> R.drawable.img_last_ride_photo
                         }
                     ),
                     contentDescription = "Theme Background",
@@ -590,7 +611,7 @@ fun GarageTab(
                             MusicTrack.THE_LAST_RIDE -> "The Last Ride (Sidhu Moose Wala)"
                             MusicTrack.SIDHU_MOOSEWALA -> "295 - Moosetape (Sidhu Moose Wala)"
                             MusicTrack.LEGEND -> "LEGEND (Sidhu Moose Wala)"
-                            MusicTrack.MUSTANG -> "MUSTANG (Prem Dhillon ft. Sidhu Moose Wala)"
+                            MusicTrack.MUSTANG -> "MUSTANG (Sidhu Moose Wala)"
                         }
                         val isSelected = activeTrack == track
                         val downloadState = downloadStates[track] ?: DownloadStatus.NotDownloaded
