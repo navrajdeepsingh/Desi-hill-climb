@@ -1407,7 +1407,7 @@ fun ActiveGameplayScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Realistic Metallic Brake Pedal (Wider, medium height)
+                // Realistic Red Brake Pedal (Wider, medium height)
                 Box(
                     modifier = Modifier
                         .width(72.dp)
@@ -1416,16 +1416,16 @@ fun ActiveGameplayScreen(
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = if (brakePressed) {
-                                    listOf(Color(0xFF2D2B2E), Color(0xFF1E1C1F))
+                                    listOf(Color(0xFF9F1239), Color(0xFF4C0519))
                                 } else {
-                                    listOf(Color(0xFF4A484D), Color(0xFF2B292C))
+                                    listOf(Color(0xFFBE123C), Color(0xFF881337))
                                 }
-                            ),
+                             ),
                             shape = RoundedCornerShape(14.dp)
                         )
                         .border(
                             width = 2.dp,
-                            color = if (brakePressed) Color(0xFFE8B4B0) else Color(0xFF8E8A94),
+                            color = if (brakePressed) Color(0xFFFDA4AF) else Color(0xFFE11D48),
                             shape = RoundedCornerShape(14.dp)
                         )
                         .shadow(
@@ -1459,7 +1459,7 @@ fun ActiveGameplayScreen(
                                     .fillMaxHeight(0.75f)
                                     .align(Alignment.CenterVertically)
                                     .background(
-                                        color = if (brakePressed) Color(0xFF8A1E1E) else Color(0xFF1C1A1D),
+                                        color = if (brakePressed) Color(0xFFFDA4AF) else Color(0xFF9F1239),
                                         shape = RoundedCornerShape(2.dp)
                                     )
                             )
@@ -1473,7 +1473,7 @@ fun ActiveGameplayScreen(
                     ) {
                         Text(
                             text = "BRAKE",
-                            color = if (brakePressed) Color(0xFFF2B8B5) else Color.White,
+                            color = if (brakePressed) Color(0xFFFDA4AF) else Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 0.5.sp
@@ -1600,7 +1600,7 @@ fun ActiveGameplayScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Realistic Metallic Gas Pedal (Narrower, taller profile)
+                // Realistic Green Gas Pedal (Narrower, taller profile)
                 Box(
                     modifier = Modifier
                         .width(58.dp)
@@ -1609,16 +1609,16 @@ fun ActiveGameplayScreen(
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = if (gasPressed) {
-                                    listOf(Color(0xFF2A243A), Color(0xFF1B1626))
+                                    listOf(Color(0xFF166534), Color(0xFF14532D))
                                 } else {
-                                    listOf(Color(0xFF4F4666), Color(0xFF2E273D))
+                                    listOf(Color(0xFF22C55E), Color(0xFF15803D))
                                 }
                             ),
                             shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
                         )
                         .border(
                             width = 2.dp,
-                            color = if (gasPressed) Color(0xFFD0BCFF) else Color(0xFF8E8A94),
+                            color = if (gasPressed) Color(0xFF86EFAC) else Color(0xFF22C55E),
                             shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
                         )
                         .shadow(
@@ -1652,7 +1652,7 @@ fun ActiveGameplayScreen(
                                     .fillMaxHeight(0.82f)
                                     .align(Alignment.CenterVertically)
                                     .background(
-                                        color = if (gasPressed) Color(0xFFD0BCFF) else Color(0xFF14111A),
+                                        color = if (gasPressed) Color(0xFF86EFAC) else Color(0xFF166534),
                                         shape = RoundedCornerShape(1.5.dp)
                                     )
                             )
@@ -1666,7 +1666,7 @@ fun ActiveGameplayScreen(
                     ) {
                         Text(
                             text = "GAS",
-                            color = if (gasPressed) Color(0xFFD0BCFF) else Color.White,
+                            color = if (gasPressed) Color(0xFF86EFAC) else Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -3066,35 +3066,7 @@ fun GameCanvas(
                 }
                 drawPath(peakPath, turbanColor)
 
-            } else {
-                // DEFAULT HELMET CHARACTER - outlined
-                drawCircle(
-                    color = Color.Black,
-                    radius = 9.5f,
-                    center = Offset(screenCarX - 2f, screenCarY - 18f)
-                )
-                drawCircle(
-                    color = Color(0xFF334155), // Driver coat
-                    radius = 7f,
-                    center = Offset(screenCarX - 2f, screenCarY - 18f)
-                )
-                drawCircle(
-                    color = Color.Black,
-                    radius = 11.5f,
-                    center = Offset(screenCarX - 2f, screenCarY - 26f)
-                )
-                drawCircle(
-                    color = Color(0xFFD0BCFF), // Immersive Lavender helmet
-                    radius = 9f,
-                    center = Offset(screenCarX - 2f, screenCarY - 26f)
-                )
-                drawRect(
-                    color = Color.Black,
-                    topLeft = Offset(screenCarX + 1f, screenCarY - 28f),
-                    size = Size(6f, 4f)
-                )
             }
-
         }
 
         // DRAW ROTATING WHEELS at true world position
