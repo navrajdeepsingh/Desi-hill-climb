@@ -25,101 +25,148 @@ object DrivingSoundPlayer {
     private const val SOUND_URL_1 = "https://docs.google.com/uc?export=download&id=1fJYTRMYgPR-_3XPzoXenDzY5f4_Q5rrd"
     private const val SOUND_URL_2 = "https://docs.google.com/uc?export=download&id=1ydS3sWiOQwnHmWyQVXglLkmOra15w1km"
 
+    private var setupJob: Job? = null
+    private val playerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     /**
      * Start playing the driving sounds. Initiates background streaming prepared listeners,
      * and sets up a parallel synth fallback if streaming buffers take time to load.
      */
     fun start() {
-        if (isPlaying) return
-        isPlaying = true
-        isP1Active = false
-        isP2Active = false
-        isGasActive = false
+        synchronized(this) {
+            if (isPlaying) return
+            isPlaying = true
+            isP1Active = false
+            isP2Active = false
+            isGasActive = false
 
-        Log.d(TAG, "Starting dual driving audio stream setup...")
+            Log.d(TAG, "Starting dual driving audio stream setup...")
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                cleanUpPlayers()
+            setupJob?.cancel()
+            setupJob = playerScope.launch {
+                try {
+                    cleanUpPlayers()
 
-                // 1. Initialise and stream Engine Sound 1
-                player1 = MediaPlayer().apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_GAME)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-                    )
-                    setDataSource(SOUND_URL_1)
-                    isLooping = true
-                    
-                    setOnPreparedListener { mp ->
-                        if (isPlaying) {
-                            Log.d(TAG, "Driving Sound 1 (Engine) streaming successfully!")
-                            isP1Active = true
-                            stopSynthOnly()
-                            mp.start()
-                            updateVolumeLevels()
-                        } else {
-                            mp.release()
+                    val p1 = withContext(Dispatchers.IO) {
+                        val instance = MediaPlayer()
+                        try {
+                            instance.setAudioAttributes(
+                                AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_GAME)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                    .build()
+                            )
+                            instance.setDataSource(SOUND_URL_1)
+                            instance.isLooping = true
+                        } catch (e: Exception) {
+                            instance.release()
+                            throw e
+                        }
+                        instance
+                    }
+
+                    val p2 = withContext(Dispatchers.IO) {
+                        val instance = MediaPlayer()
+                        try {
+                            instance.setAudioAttributes(
+                                AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_GAME)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                    .build()
+                            )
+                            instance.setDataSource(SOUND_URL_2)
+                            instance.isLooping = true
+                        } catch (e: Exception) {
+                            instance.release()
+                            throw e
+                        }
+                        instance
+                    }
+
+                    if (!isActive) {
+                        p1.release()
+                        p2.release()
+                        return@launch
+                    }
+
+                    p1.setOnPreparedListener { mp ->
+                        synchronized(DrivingSoundPlayer) {
+                            if (isPlaying && player1 == mp) {
+                                Log.d(TAG, "Driving Sound 1 (Engine) streaming successfully!")
+                                isP1Active = true
+                                stopSynthOnly()
+                                try {
+                                    mp.start()
+                                } catch (e: Exception) {}
+                                updateVolumeLevels()
+                            } else {
+                                try { mp.release() } catch (ex: Exception) {}
+                            }
                         }
                     }
-                    
-                    setOnErrorListener { mp, what, extra ->
+
+                    p1.setOnErrorListener { mp, what, extra ->
                         Log.e(TAG, "Driving Sound 1 stream failed (what=$what, extra=$extra). Falling back to synth.")
-                        isP1Active = false
-                        mp.release()
-                        player1 = null
-                        startSynthFallback()
+                        synchronized(DrivingSoundPlayer) {
+                            isP1Active = false
+                            if (player1 == mp) {
+                                player1 = null
+                            }
+                            try { mp.release() } catch (ex: Exception) {}
+                            startSynthFallback()
+                        }
                         true
                     }
-                }
 
-                // 2. Initialise and stream Booster Sound 2
-                player2 = MediaPlayer().apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_GAME)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-                    )
-                    setDataSource(SOUND_URL_2)
-                    isLooping = true
-                    
-                    setOnPreparedListener { mp ->
-                        if (isPlaying) {
-                            Log.d(TAG, "Driving Sound 2 (Booster) streaming successfully!")
-                            isP2Active = true
-                            stopSynthOnly()
-                            mp.start()
-                            updateVolumeLevels()
-                        } else {
-                            mp.release()
+                    p2.setOnPreparedListener { mp ->
+                        synchronized(DrivingSoundPlayer) {
+                            if (isPlaying && player2 == mp) {
+                                Log.d(TAG, "Driving Sound 2 (Booster) streaming successfully!")
+                                isP2Active = true
+                                stopSynthOnly()
+                                try {
+                                    mp.start()
+                                } catch (e: Exception) {}
+                                updateVolumeLevels()
+                            } else {
+                                try { mp.release() } catch (ex: Exception) {}
+                            }
                         }
                     }
-                    
-                    setOnErrorListener { mp, what, extra ->
+
+                    p2.setOnErrorListener { mp, what, extra ->
                         Log.e(TAG, "Driving Sound 2 stream failed (some codes=$what, $extra).")
-                        isP2Active = false
-                        mp.release()
-                        player2 = null
+                        synchronized(DrivingSoundPlayer) {
+                            isP2Active = false
+                            if (player2 == mp) {
+                                player2 = null
+                            }
+                            try { mp.release() } catch (ex: Exception) {}
+                        }
                         true
                     }
-                }
 
-                player1?.prepareAsync()
-                player2?.prepareAsync()
+                    synchronized(DrivingSoundPlayer) {
+                        player1 = p1
+                        player2 = p2
+                    }
 
-                // Wait 4 seconds for streams to begin; fallback instantly if they take too long
-                delay(4000)
-                if (isPlaying && (!isP1Active && !isP2Active) && synthJob == null) {
-                    Log.d(TAG, "Streaming buffer taking too long (network lag). Triggering synth engine audio.")
+                    p1.prepareAsync()
+                    p2.prepareAsync()
+
+                    // Wait 4 seconds for streams to begin; fallback instantly if they take too long
+                    delay(4000)
+                    synchronized(DrivingSoundPlayer) {
+                        if (isPlaying && (!isP1Active && !isP2Active) && synthJob == null) {
+                            Log.d(TAG, "Streaming buffer taking too long (network lag). Triggering synth engine audio.")
+                            startSynthFallback()
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception during stream launch: ${e.message}")
                     startSynthFallback()
                 }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Exception during stream launch: ${e.message}")
-                startSynthFallback()
             }
         }
     }
@@ -128,8 +175,10 @@ object DrivingSoundPlayer {
      * Alters the balance and pitch feel dynamically based on acceleration state.
      */
     fun setGasState(gasPressed: Boolean) {
-        if (isGasActive == gasPressed) return
-        isGasActive = gasPressed
+        synchronized(this) {
+            if (isGasActive == gasPressed) return
+            isGasActive = gasPressed
+        }
         updateVolumeLevels()
     }
 
@@ -172,9 +221,12 @@ object DrivingSoundPlayer {
     }
 
     fun stop() {
-        isPlaying = false
-        stopSynthOnly()
-        cleanUpPlayers()
+        synchronized(this) {
+            isPlaying = false
+            setupJob?.cancel()
+            stopSynthOnly()
+            cleanUpPlayers()
+        }
     }
 
     private fun startSynthFallback() {
@@ -259,18 +311,28 @@ object DrivingSoundPlayer {
     }
 
     private fun cleanUpPlayers() {
-        try {
-            player1?.release()
-        } catch (t: Throwable) {
-            Log.e(TAG, "Player1 release warning: ${t.message}")
-        }
-        player1 = null
+        synchronized(this) {
+            try {
+                player1?.let { mp ->
+                    mp.setOnPreparedListener(null)
+                    mp.setOnErrorListener(null)
+                    mp.release()
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Player1 release warning: ${t.message}")
+            }
+            player1 = null
 
-        try {
-            player2?.release()
-        } catch (t: Throwable) {
-            Log.e(TAG, "Player2 release warning: ${t.message}")
+            try {
+                player2?.let { mp ->
+                    mp.setOnPreparedListener(null)
+                    mp.setOnErrorListener(null)
+                    mp.release()
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Player2 release warning: ${t.message}")
+            }
+            player2 = null
         }
-        player2 = null
     }
 }

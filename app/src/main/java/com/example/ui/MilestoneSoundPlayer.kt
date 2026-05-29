@@ -14,6 +14,9 @@ object MilestoneSoundPlayer {
     private var isPreparing = false
     private var isReady = false
 
+    private var playerJob: Job? = null
+    private val playerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     // Direct Google Drive direct stream URL
     private const val STREAM_URL = "https://docs.google.com/uc?export=download&id=1RVM-I1y2YN5wM_3htda--kUB4VOJtmj1"
 
@@ -22,43 +25,75 @@ object MilestoneSoundPlayer {
      * the sound plays immediately with zero lag.
      */
     fun preBuffer() {
-        if (isPreparing || isReady) return
-        isPreparing = true
-        isReady = false
+        synchronized(this) {
+            if (isPreparing || isReady) return
+            isPreparing = true
+            isReady = false
+        }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                cleanUp()
-                val mp = MediaPlayer().apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .build()
-                    )
-                    setDataSource(STREAM_URL)
-                    
-                    setOnPreparedListener {
-                        Log.d(TAG, "Milestone GDrive sound pre-buffered and ready to play!")
-                        isReady = true
-                        isPreparing = false
+        synchronized(this) {
+            playerJob?.cancel()
+            playerJob = playerScope.launch {
+                try {
+                    cleanUp()
+                    val mp = withContext(Dispatchers.IO) {
+                        val instance = MediaPlayer()
+                        try {
+                            instance.setAudioAttributes(
+                                AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                                    .build()
+                            )
+                            instance.setDataSource(STREAM_URL)
+                        } catch (e: Exception) {
+                            instance.release()
+                            throw e
+                        }
+                        instance
                     }
-                    
-                    setOnErrorListener { player, what, extra ->
+
+                    if (!isActive) {
+                        mp.release()
+                        return@launch
+                    }
+
+                    mp.setOnPreparedListener { player ->
+                        synchronized(MilestoneSoundPlayer) {
+                            if (mediaPlayer == player) {
+                                Log.d(TAG, "Milestone GDrive sound pre-buffered and ready to play!")
+                                isReady = true
+                                isPreparing = false
+                            } else {
+                                try { player.release() } catch (e: Exception) {}
+                            }
+                        }
+                    }
+
+                    mp.setOnErrorListener { player, what, extra ->
                         Log.e(TAG, "Milestone sound MediaPlayer preparation failed: what=$what, extra=$extra. Synthesizer fallback activated.")
-                        isReady = false
-                        isPreparing = false
-                        player.release()
-                        mediaPlayer = null
+                        synchronized(MilestoneSoundPlayer) {
+                            isReady = false
+                            isPreparing = false
+                            if (mediaPlayer == player) {
+                                mediaPlayer = null
+                            }
+                            try { player.release() } catch (e: Exception) {}
+                        }
                         true
                     }
+
+                    synchronized(MilestoneSoundPlayer) {
+                        mediaPlayer = mp
+                    }
+                    mp.prepareAsync()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception preparing custom milestone player: ${e.message}")
+                    synchronized(MilestoneSoundPlayer) {
+                        isReady = false
+                        isPreparing = false
+                    }
                 }
-                mediaPlayer = mp
-                mp.prepareAsync()
-            } catch (e: Exception) {
-                Log.e(TAG, "Exception preparing custom milestone player: ${e.message}")
-                isReady = false
-                isPreparing = false
             }
         }
     }
@@ -182,17 +217,26 @@ object MilestoneSoundPlayer {
      * Stop and cleanup players
      */
     fun stop() {
-        isReady = false
-        isPreparing = false
-        cleanUp()
+        synchronized(this) {
+            isReady = false
+            isPreparing = false
+            playerJob?.cancel()
+            cleanUp()
+        }
     }
 
     private fun cleanUp() {
-        try {
-            mediaPlayer?.release()
-        } catch (t: Throwable) {
-            Log.e(TAG, "Milestone MediaPlayer release error: ${t.message}")
+        synchronized(this) {
+            try {
+                mediaPlayer?.let { mp ->
+                    mp.setOnPreparedListener(null)
+                    mp.setOnErrorListener(null)
+                    mp.release()
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Milestone MediaPlayer release error: ${t.message}")
+            }
+            mediaPlayer = null
         }
-        mediaPlayer = null
     }
 }

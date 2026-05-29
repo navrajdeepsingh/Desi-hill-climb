@@ -1395,10 +1395,9 @@ fun ActiveGameplayScreen(
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .widthIn(max = 800.dp)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 4.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
