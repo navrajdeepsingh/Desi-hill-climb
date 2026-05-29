@@ -14,7 +14,6 @@ object DrivingSoundPlayer {
     private var player1: MediaPlayer? = null
     private var player2: MediaPlayer? = null
     private var synthJob: Job? = null
-    private var audioTrack: AudioTrack? = null
     private val sampleRate = 22050
     
     private var isPlaying = false
@@ -41,6 +40,9 @@ object DrivingSoundPlayer {
             isGasActive = false
 
             Log.d(TAG, "Starting dual driving audio stream setup...")
+
+            // Start the synth fallback immediately so there is never silence!
+            startSynthFallback()
 
             setupJob?.cancel()
             setupJob = playerScope.launch {
@@ -168,7 +170,7 @@ object DrivingSoundPlayer {
 
                     // Wait 4 seconds for streams to begin; fallback instantly if they take too long
                     delay(4000)
-                    synchronized(DrivingSoundPlayer) {
+                    synchronized(this@DrivingSoundPlayer) {
                         if (isPlaying && (!isP1Active && !isP2Active) && synthJob == null) {
                             Log.d(TAG, "Streaming buffer taking too long (network lag). Triggering synth engine audio.")
                             startSynthFallback()
@@ -244,14 +246,15 @@ object DrivingSoundPlayer {
     private fun startSynthFallback() {
         if (synthJob != null) return
         synthJob = CoroutineScope(Dispatchers.Default).launch {
+            var trackLocal: AudioTrack? = null
             try {
                 val bufferSize = AudioTrack.getMinBufferSize(
                     sampleRate,
                     AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT
-                )
+                ).coerceAtLeast(4096)
                 
-                audioTrack = AudioTrack.Builder()
+                val track = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_GAME)
@@ -269,7 +272,8 @@ object DrivingSoundPlayer {
                     .setTransferMode(AudioTrack.MODE_STREAM)
                     .build()
 
-                audioTrack?.play()
+                trackLocal = track
+                track.play()
 
                 var phase = 0.0
                 val buffer = ShortArray(1024)
@@ -292,12 +296,23 @@ object DrivingSoundPlayer {
                     phase += 2.0 * Math.PI * targetFreq * buffer.size / sampleRate
                     phase %= 2.0 * Math.PI
 
-                    audioTrack?.write(buffer, 0, buffer.size)
+                    track.write(buffer, 0, buffer.size)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-                stopSynthOnly()
+                try {
+                    trackLocal?.apply {
+                        if (state == AudioTrack.STATE_INITIALIZED) {
+                            try {
+                                stop()
+                            } catch (t: Throwable) {}
+                            release()
+                        }
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "AudioTrack release warning: ${t.message}")
+                }
             }
         }
     }
@@ -305,21 +320,6 @@ object DrivingSoundPlayer {
     private fun stopSynthOnly() {
         synthJob?.cancel()
         synthJob = null
-        try {
-            audioTrack?.apply {
-                if (state == AudioTrack.STATE_INITIALIZED) {
-                    try {
-                        stop()
-                    } catch (t: Throwable) {
-                        Log.e(TAG, "AudioTrack stop warning: ${t.message}")
-                    }
-                    release()
-                }
-            }
-        } catch (t: Throwable) {
-            Log.e(TAG, "AudioTrack release warning: ${t.message}")
-        }
-        audioTrack = null
     }
 
     private fun cleanUpPlayers() {
