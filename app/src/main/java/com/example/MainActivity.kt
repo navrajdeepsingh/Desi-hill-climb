@@ -24,6 +24,9 @@ class MainActivity : ComponentActivity() {
     val database = GameDatabase.getDatabase(applicationContext)
     val repository = GameRepository(database.gameDao())
     
+    // Initialize LobbyMusicPlayer with Context to enable offline caching and background downloads
+    com.example.ui.LobbyMusicPlayer.initialize(applicationContext)
+    
     setContent {
       MyApplicationTheme {
         // ViewModel instantiated with custom Factory

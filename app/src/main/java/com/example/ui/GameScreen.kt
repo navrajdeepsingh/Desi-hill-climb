@@ -55,6 +55,36 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.*
 
+@Composable
+fun VideoBackground(videoFile: java.io.File, modifier: Modifier = Modifier) {
+    androidx.compose.ui.viewinterop.AndroidView(
+        factory = { context ->
+            android.widget.VideoView(context).apply {
+                setOnPreparedListener { mp ->
+                    mp.isLooping = true
+                    try {
+                        mp.setVolume(0f, 0f) // Mute audio since background only provides visuals
+                    } catch (e: Exception) {
+                        android.util.Log.e("VideoBackground", "Error muting video volume: ${e.message}")
+                    }
+                }
+                setVideoPath(videoFile.absolutePath)
+                start()
+            }
+        },
+        update = { videoView ->
+            try {
+                if (!videoView.isPlaying) {
+                    videoView.start()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("VideoBackground", "Error starting videoview: ${e.message}")
+            }
+        },
+        modifier = modifier
+    )
+}
+
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun GameScreen(
@@ -69,6 +99,9 @@ fun GameScreen(
 
     var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
     var isRadioOn by remember { mutableStateOf(true) }
+    val isOfflinePlayback by LobbyMusicPlayer.isOfflinePlaybackFlow.collectAsStateWithLifecycle()
+    val downloadStates by LobbyMusicPlayer.downloadStates.collectAsStateWithLifecycle()
+    val videoDownloadState by LobbyMusicPlayer.videoDownloadState.collectAsStateWithLifecycle()
 
     // Keep lobby music playing / stopped based on state changes smoothly
     LaunchedEffect(gameState.gameActive, activeTrack, isRadioOn) {
@@ -120,26 +153,45 @@ fun GameScreen(
             .background(Color(0xFF1C1B1F)) // Fallback deep space background
     ) {
         if (!gameState.gameActive) {
-            // Sidhu Moosewala theme background decoration (B&W portrait or Cute Infant Son visual)
-             Image(
-                painter = painterResource(
-                    id = when (activeTrack) {
-                        MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
-                        MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
-                        MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
-                        MusicTrack.LEGEND -> R.drawable.img_sidhu_son_bg
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val cachedVideoFile = remember(videoDownloadState) {
+                java.io.File(context.filesDir, "video_OLD_SKOOL.mp4")
+            }
+            val hasVideo = remember(videoDownloadState, activeTrack) {
+                activeTrack == MusicTrack.OLD_SKOOL && 
+                cachedVideoFile.exists() && 
+                cachedVideoFile.length() > 2 * 1024 * 1024
+            }
+
+            if (hasVideo) {
+                VideoBackground(
+                    videoFile = cachedVideoFile,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Sidhu Moosewala theme background decoration (B&W portrait or Cute Infant Son visual)
+                Image(
+                    painter = painterResource(
+                         id = when (activeTrack) {
+                            MusicTrack.THE_LAST_RIDE -> R.drawable.img_last_ride_photo
+                            MusicTrack.OLD_SKOOL -> R.drawable.img_prem_dhillon
+                            MusicTrack.SIDHU_MOOSEWALA -> R.drawable.img_sidhu_son_bg
+                            MusicTrack.LEGEND -> R.drawable.img_sidhu_son_bg
+                            MusicTrack.MUSTANG -> R.drawable.img_prem_dhillon
+                        }
+                    ),
+                    contentDescription = "Theme Background",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = when (activeTrack) {
+                        MusicTrack.THE_LAST_RIDE -> 0.5f
+                        MusicTrack.OLD_SKOOL -> 0.45f
+                        MusicTrack.SIDHU_MOOSEWALA -> 0.55f
+                        MusicTrack.LEGEND -> 0.50f
+                        MusicTrack.MUSTANG -> 0.45f
                     }
-                ),
-                contentDescription = "Theme Background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = when (activeTrack) {
-                    MusicTrack.THE_LAST_RIDE -> 0.5f
-                    MusicTrack.OLD_SKOOL -> 0.45f
-                    MusicTrack.SIDHU_MOOSEWALA -> 0.55f
-                    MusicTrack.LEGEND -> 0.50f
-                }
-            )
+                )
+            }
             // Soft overlay to maintain exceptional contrast for readability
             Box(
                 modifier = Modifier
@@ -148,9 +200,10 @@ fun GameScreen(
                         Color.Black.copy(
                             alpha = when (activeTrack) {
                                 MusicTrack.THE_LAST_RIDE -> 0.55f
-                                MusicTrack.OLD_SKOOL -> 0.45f
+                                MusicTrack.OLD_SKOOL -> if (hasVideo) 0.55f else 0.45f
                                 MusicTrack.SIDHU_MOOSEWALA -> 0.50f
                                 MusicTrack.LEGEND -> 0.50f
+                                MusicTrack.MUSTANG -> 0.45f
                             }
                         )
                     )
@@ -361,6 +414,10 @@ fun GarageTab(
     nitroCharges: Int,
     onBuyNitro: () -> Unit
 ) {
+    val isOfflinePlayback by LobbyMusicPlayer.isOfflinePlaybackFlow.collectAsStateWithLifecycle()
+    val downloadStates by LobbyMusicPlayer.downloadStates.collectAsStateWithLifecycle()
+    val videoDownloadState by LobbyMusicPlayer.videoDownloadState.collectAsStateWithLifecycle()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -460,6 +517,7 @@ fun GarageTab(
                                         MusicTrack.OLD_SKOOL -> "PUNJABI 101 — Old Skool"
                                         MusicTrack.SIDHU_MOOSEWALA -> "LEGEND FM — Sidhu Moose Wala"
                                         MusicTrack.LEGEND -> "LEGEND FM — Legend"
+                                        MusicTrack.MUSTANG -> "MUSTANG FM — Mustang"
                                     }
                                 } else {
                                     "PRESS POWER TO TUNER"
@@ -471,10 +529,10 @@ fun GarageTab(
                             )
                             if (isRadioOn) {
                                 Text(
-                                    text = "Playing original direct audio file",
+                                    text = if (isOfflinePlayback) "✓ Playing Offline (High Quality Cached MP3)" else "📶 Streaming original studio audio",
                                     fontSize = 9.sp,
-                                    color = Color(0xFF22C55E),
-                                    fontWeight = FontWeight.Medium
+                                    color = if (isOfflinePlayback) Color(0xFF10B981) else Color(0xFF38BDF8),
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
@@ -486,7 +544,8 @@ fun GarageTab(
                                     MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
                                     MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
                                     MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.LEGEND
-                                    MusicTrack.LEGEND -> MusicTrack.OLD_SKOOL
+                                    MusicTrack.LEGEND -> MusicTrack.MUSTANG
+                                    MusicTrack.MUSTANG -> MusicTrack.OLD_SKOOL
                                 }
                                 onTrackSelected(nextTrack)
                             },
@@ -506,6 +565,176 @@ fun GarageTab(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("TUNE", fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                // DIRECT SELECT STATION (Radio buttons)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "SELECT STATION DIRECTLY",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF94A3B8),
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(start = 2.dp, bottom = 6.dp)
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    MusicTrack.entries.forEach { track ->
+                        val trackLabel = when (track) {
+                            MusicTrack.OLD_SKOOL -> "Old Skool (Sidhu Moose Wala ft. Prem Dhillon)"
+                            MusicTrack.THE_LAST_RIDE -> "The Last Ride (Sidhu Moose Wala)"
+                            MusicTrack.SIDHU_MOOSEWALA -> "295 - Moosetape (Sidhu Moose Wala)"
+                            MusicTrack.LEGEND -> "LEGEND (Sidhu Moose Wala)"
+                            MusicTrack.MUSTANG -> "MUSTANG (Prem Dhillon ft. Sidhu Moose Wala)"
+                        }
+                        val isSelected = activeTrack == track
+                        val downloadState = downloadStates[track] ?: DownloadStatus.NotDownloaded
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (isSelected) Color(0xFF1E293B) else Color(0xFF0F172A),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .clickable(enabled = isRadioOn) { onTrackSelected(track) }
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) Color(0xFFD4AF37) else Color(0xFF334155),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { if (isRadioOn) onTrackSelected(track) },
+                                enabled = isRadioOn,
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = Color(0xFFFDE047),
+                                    unselectedColor = Color(0xFF64748B),
+                                    disabledSelectedColor = Color(0xFF475569)
+                                ),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(
+                                modifier = Modifier.weight(1.0f)
+                            ) {
+                                Text(
+                                    text = trackLabel,
+                                    fontSize = 11.sp,
+                                    color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                                when (downloadState) {
+                                    is DownloadStatus.Downloaded -> {
+                                        Text(
+                                            text = "✓ OFFLINE READY (HIGH QUALITY CACHED)",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF10B981)
+                                        )
+                                    }
+                                    is DownloadStatus.Downloading -> {
+                                        Text(
+                                            text = "⚡ DOWNLOADING OFFLINE DATA: ${downloadState.progress}%",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFFBBF24)
+                                        )
+                                    }
+                                    is DownloadStatus.Failed -> {
+                                        Text(
+                                            text = "☁ ONLINE ONLY (TAP CLOUD TO RETRY)",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFFEF4444)
+                                        )
+                                    }
+                                    else -> {
+                                        Text(
+                                            text = "☁ ONLINE STREAM (TAP CLOUD TO DOWNLOAD)",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = Color(0xFF64748B)
+                                        )
+                                    }
+                                }
+                                if (track == MusicTrack.OLD_SKOOL) {
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.clickable(enabled = isRadioOn && videoDownloadState !is DownloadStatus.Downloading) {
+                                            if (videoDownloadState !is DownloadStatus.Downloaded) {
+                                                LobbyMusicPlayer.downloadVideo()
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayCircle,
+                                            contentDescription = "Video Status",
+                                            tint = when (videoDownloadState) {
+                                                is DownloadStatus.Downloaded -> Color(0xFF38BDF8)
+                                                is DownloadStatus.Downloading -> Color(0xFFFBBF24)
+                                                is DownloadStatus.Failed -> Color(0xFFEF4444)
+                                                else -> Color(0xFF64748B)
+                                            },
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                        Text(
+                                            text = when (videoDownloadState) {
+                                                is DownloadStatus.Downloaded -> "✓ OFFLINE VIDEO ENABLED (TAP TO PREVIEW VIDEO)"
+                                                is DownloadStatus.Downloading -> "⚡ DOWNLOADING HD VIDEO... ${(videoDownloadState as DownloadStatus.Downloading).progress}%"
+                                                is DownloadStatus.Failed -> "🎥 OFFLINE VIDEO (TAP TO RETRY DOWNLOAD)"
+                                                else -> "🎥 OFFLINE VIDEO AVAILABLE (TAP TO DOWNLOAD)"
+                                            },
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = when (videoDownloadState) {
+                                                is DownloadStatus.Downloaded -> Color(0xFF38BDF8)
+                                                is DownloadStatus.Downloading -> Color(0xFFFDE047)
+                                                is DownloadStatus.Failed -> Color(0xFFEF4444)
+                                                else -> Color(0xFF94A3B8)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            if (downloadState !is DownloadStatus.Downloaded && downloadState !is DownloadStatus.Downloading) {
+                                IconButton(
+                                    onClick = { LobbyMusicPlayer.downloadTrack(track) },
+                                    enabled = isRadioOn,
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Cloud,
+                                        contentDescription = "Cache track offline",
+                                        tint = if (downloadState is DownloadStatus.Failed) Color(0xFFEF4444) else Color(0xFF38BDF8),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else if (downloadState is DownloadStatus.Downloaded) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Cached",
+                                    tint = Color(0xFF10B981),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            } else if (downloadState is DownloadStatus.Downloading) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFFFDE047),
+                                    strokeWidth = 1.5.dp,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1324,7 +1553,8 @@ fun ActiveGameplayScreen(
                                 MusicTrack.OLD_SKOOL -> MusicTrack.THE_LAST_RIDE
                                 MusicTrack.THE_LAST_RIDE -> MusicTrack.SIDHU_MOOSEWALA
                                 MusicTrack.SIDHU_MOOSEWALA -> MusicTrack.LEGEND
-                                MusicTrack.LEGEND -> MusicTrack.OLD_SKOOL
+                                MusicTrack.LEGEND -> MusicTrack.MUSTANG
+                                MusicTrack.MUSTANG -> MusicTrack.OLD_SKOOL
                             }
                             onTrackSelected(nextTrack)
                         }
@@ -1400,7 +1630,7 @@ fun ActiveGameplayScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(start = 10.dp, end = 16.dp, top = 0.dp, bottom = 4.dp),
+                .padding(start = 64.dp, end = 16.dp, top = 0.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -3410,6 +3640,7 @@ fun DashboardRadioPlayer(
                                     MusicTrack.OLD_SKOOL -> "PUNJABI 101"
                                     MusicTrack.SIDHU_MOOSEWALA -> "LEGEND LIVE 5"
                                     MusicTrack.LEGEND -> "LEGEND LIVE 9"
+                                    MusicTrack.MUSTANG -> "MUSTANG FM 10"
                                 }
                             } else {
                                 "STANDBY"
