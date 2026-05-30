@@ -116,6 +116,8 @@ fun GameScreen(
     val profile by viewModel.playerProfile.collectAsStateWithLifecycle()
     val topRuns by viewModel.topRuns.collectAsStateWithLifecycle()
     val unlockedVehicles by viewModel.unlockedVehicles.collectAsStateWithLifecycle()
+    val unlockedMaps by viewModel.unlockedMaps.collectAsStateWithLifecycle()
+    val selectedMapId by viewModel.selectedMap.collectAsStateWithLifecycle()
     val nitroCount by viewModel.nitroCharges.collectAsStateWithLifecycle()
 
     var activeTrack by remember { mutableStateOf(LobbyMusicPlayer.currentTrack) }
@@ -243,6 +245,10 @@ fun GameScreen(
                 onUpgrade = { viewModel.purchaseUpgrade(it) },
                 onSelectVehicle = { viewModel.selectVehicle(it) },
                 onUnlockVehicle = { viewModel.unlockVehicle(it) },
+                unlockedMaps = unlockedMaps,
+                selectedMap = selectedMapId,
+                onSelectMap = { viewModel.selectMap(it) },
+                onUnlockMap = { viewModel.unlockMap(it) },
                 isRadioOn = isRadioOn,
                 onRadioToggle = { isRadioOn = !isRadioOn },
                 nitroCharges = nitroCount,
@@ -281,6 +287,10 @@ fun GarageMenuScreen(
     onUpgrade: (String) -> Unit,
     onSelectVehicle: (String) -> Unit,
     onUnlockVehicle: (VehicleType) -> Unit,
+    unlockedMaps: Set<String>,
+    selectedMap: String,
+    onSelectMap: (String) -> Unit,
+    onUnlockMap: (MapType) -> Unit,
     isRadioOn: Boolean,
     onRadioToggle: () -> Unit,
     nitroCharges: Int,
@@ -406,6 +416,10 @@ fun GarageMenuScreen(
                     onUpgrade = onUpgrade,
                     onSelectVehicle = onSelectVehicle,
                     onUnlockVehicle = onUnlockVehicle,
+                    unlockedMaps = unlockedMaps,
+                    selectedMap = selectedMap,
+                    onSelectMap = onSelectMap,
+                    onUnlockMap = onUnlockMap,
                     isRadioOn = isRadioOn,
                     onRadioToggle = onRadioToggle,
                     nitroCharges = nitroCharges,
@@ -430,6 +444,10 @@ fun GarageTab(
     onUpgrade: (String) -> Unit,
     onSelectVehicle: (String) -> Unit,
     onUnlockVehicle: (VehicleType) -> Unit,
+    unlockedMaps: Set<String>,
+    selectedMap: String,
+    onSelectMap: (String) -> Unit,
+    onUnlockMap: (MapType) -> Unit,
     isRadioOn: Boolean,
     onRadioToggle: () -> Unit,
     nitroCharges: Int,
@@ -935,6 +953,59 @@ fun GarageTab(
             }
         }
 
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Map selection section
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Color(0xFF49454F), RoundedCornerShape(16.dp))
+                .testTag("select_environment_panel")
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Map,
+                        contentDescription = null,
+                        tint = Color(0xFFD0BCFF),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "SELECT ENVIRONMENT",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFD0BCFF),
+                        letterSpacing = 1.5.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    MapType.entries.forEach { map ->
+                        val isUnlocked = map.id in unlockedMaps
+                        val isSelected = selectedMap == map.id
+
+                        MapSelectionCard(
+                            map = map,
+                            isUnlocked = isUnlocked,
+                            isSelected = isSelected,
+                            coinsBalance = profile.coins,
+                            onSelect = { onSelectMap(map.id) },
+                            onUnlock = { onUnlockMap(map) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
@@ -1097,6 +1168,144 @@ fun VehicleSelectionCard(
                         Text(
                             text = "${vehicle.unlockCost}",
                             fontSize = 9.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MapSelectionCard(
+    map: MapType,
+    isUnlocked: Boolean,
+    isSelected: Boolean,
+    coinsBalance: Int,
+    onSelect: () -> Unit,
+    onUnlock: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val outlineColor = when {
+        isSelected -> Color(0xFFD0BCFF)
+        isUnlocked -> Color(0xFF49454F)
+        else -> Color(0x33D0BCFF)
+    }
+
+    val cardBg = if (isSelected) Color(0xFF35333D) else Color(0xFF2B2930)
+
+    val mapIcon = when (map.id) {
+        "HimalayanPass" -> Icons.Default.AcUnit
+        "GTRoadNight" -> Icons.Default.NightlightRound
+        else -> Icons.Default.Terrain
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        shape = RoundedCornerShape(10.dp),
+        modifier = modifier
+            .border(1.5.dp, outlineColor, RoundedCornerShape(10.dp))
+            .clickable {
+                if (isUnlocked) onSelect()
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        color = Color(map.bgSkyMidColor),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = mapIcon,
+                    contentDescription = null,
+                    tint = Color(map.flowerColor),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = map.displayName,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                lineHeight = 13.sp,
+                maxLines = 1
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = map.description,
+                fontSize = 8.sp,
+                color = Color(0xFF938F99),
+                textAlign = TextAlign.Center,
+                lineHeight = 10.sp,
+                minLines = 2,
+                maxLines = 2
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            if (isUnlocked) {
+                if (isSelected) {
+                    Text(
+                        text = "EQUIPPED",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFD0BCFF),
+                        letterSpacing = 1.sp
+                    )
+                } else {
+                    Text(
+                        text = "SELECT",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF938F99),
+                        letterSpacing = 1.sp
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onUnlock,
+                    enabled = coinsBalance >= map.unlockCost,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFD700),
+                        disabledContainerColor = Color(0x33FFD700)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier
+                        .height(26.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MonetizationOn,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = "${map.unlockCost}",
+                            fontSize = 8.sp,
                             fontWeight = FontWeight.Black,
                             color = Color.Black
                         )
@@ -2086,40 +2295,105 @@ fun GameCanvas(
                 return cameraScreenY - (worldY - gameCarY)
             }
 
-        // DRAW SKY BACKWARD GRADIENT WITH PUNJAB VILLAGE VIBES (Golden Sunrise/Sunset over crop pastures)
+        val currentMapId = viewModel.selectedMap.value
+        val currentMap = MapType.entries.firstOrNull { it.id == currentMapId } ?: MapType.PUNJAB_FIELDS
+
+        // DRAW SKY BACKWARD GRADIENT
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF7DD3FC), // Sky soft cyan-blue
-                    Color(0xFFFED7AA), // Soft warm sunrise orange
-                    Color(0xFFFEF08A)  // Sunny gold hue of yellow pastures near horizon
+                    Color(currentMap.bgSkyTopColor),
+                    Color(currentMap.bgSkyMidColor),
+                    Color(currentMap.bgSkyHorizonColor)
                 )
             ),
             size = size
         )
 
-        // Draw a gorgeous, warm bright Sun of Punjab
-        drawCircle(
-            color = Color(0xFFFEF08A).copy(alpha = 0.4f),
-            radius = 75f,
-            center = Offset(width * 0.2f, height * 0.18f)
-        )
-        drawCircle(
-            color = Color(0xFFFDE047), // Sunny Yellow Core
-            radius = 45f,
-            center = Offset(width * 0.2f, height * 0.18f)
-        )
+        // Draw Twinkling Stars in GT Road Night
+        if (currentMap.id == "GTRoadNight") {
+            val starCount = 35
+            for (starIdx in 0 until starCount) {
+                val stX = (starIdx * 83f) % width
+                val stY = (starIdx * 41f) % (height * 0.45f)
+                val twinkle = 0.3f + 0.7f * sin(starIdx * 1.5f + gameCarX * 0.01f)
+                drawCircle(
+                    color = Color.White.copy(alpha = twinkle),
+                    radius = 1.5f + (starIdx % 2),
+                    center = Offset(stX, stY)
+                )
+            }
+        }
+
+        // Animated gently falling snowflakes in Himalayan Pass
+        if (currentMap.id == "HimalayanPass") {
+            val snowflakeCount = 28
+            for (snowflakeIdx in 0 until snowflakeCount) {
+                val xSeed = (snowflakeIdx * 137f + (gameCarX * 0.15f)) % width
+                val ySeed = (snowflakeIdx * 243f + (gameCarX * 0.08f) + (snowflakeIdx * 5f)) % height
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.8f),
+                    radius = 2.2f + (snowflakeIdx % 3),
+                    center = Offset(xSeed, ySeed)
+                )
+            }
+        }
+
+        // Draw Sun or Moon
+        if (currentMap.id == "GTRoadNight") {
+            // Crescent Moon
+            drawCircle(
+                color = Color(0xFFF1F5F9).copy(alpha = 0.25f),
+                radius = 45f,
+                center = Offset(width * 0.2f, height * 0.18f)
+            )
+            drawCircle(
+                color = Color(0xFFF8FAFC),
+                radius = 25f,
+                center = Offset(width * 0.2f, height * 0.18f)
+            )
+            drawCircle(
+                color = Color(currentMap.bgSkyMidColor),
+                radius = 25f,
+                center = Offset(width * 0.22f, height * 0.16f)
+            )
+        } else if (currentMap.id == "HimalayanPass") {
+            // Soft pale glowing winter sun
+            drawCircle(
+                color = Color(0xFFFFFFFF).copy(alpha = 0.15f),
+                radius = 90f,
+                center = Offset(width * 0.2f, height * 0.18f)
+            )
+            drawCircle(
+                color = Color(0xFFE2E8F0),
+                radius = 40f,
+                center = Offset(width * 0.2f, height * 0.18f)
+            )
+        } else {
+            // Bright Sun of Punjab
+            drawCircle(
+                color = Color(0xFFFEF08A).copy(alpha = 0.4f),
+                radius = 75f,
+                center = Offset(width * 0.2f, height * 0.18f)
+            )
+            drawCircle(
+                color = Color(0xFFFDE047),
+                radius = 45f,
+                center = Offset(width * 0.2f, height * 0.18f)
+            )
+        }
 
         // DRAW Distance Clouds (Parallax Scrolling) - warm fluffy afternoon clouds
         val cloudScroll1 = (gameCarX * 0.08f) % width
         val cloudHeight = height * 0.15f
-        drawCircle(Color.White.copy(alpha = 0.5f), radius = 110f, center = Offset(width * 0.3f - cloudScroll1, cloudHeight))
-        drawCircle(Color.White.copy(alpha = 0.5f), radius = 130f, center = Offset(width * 0.35f - cloudScroll1, cloudHeight - 15f))
-        drawCircle(Color.White.copy(alpha = 0.5f), radius = 90f, center = Offset(width * 0.42f - cloudScroll1, cloudHeight + 5f))
+        val cloudAlpha = if (currentMap.id == "GTRoadNight") 0.15f else 0.5f
+        drawCircle(Color.White.copy(alpha = cloudAlpha), radius = 110f, center = Offset(width * 0.3f - cloudScroll1, cloudHeight))
+        drawCircle(Color.White.copy(alpha = cloudAlpha), radius = 130f, center = Offset(width * 0.35f - cloudScroll1, cloudHeight - 15f))
+        drawCircle(Color.White.copy(alpha = cloudAlpha), radius = 90f, center = Offset(width * 0.42f - cloudScroll1, cloudHeight + 5f))
 
         val cloudScroll2 = (gameCarX * 0.04f) % width
-        drawCircle(Color.White.copy(alpha = 0.3f), radius = 140f, center = Offset(width * 0.7f - cloudScroll2, cloudHeight * 1.4f))
-        drawCircle(Color.White.copy(alpha = 0.3f), radius = 160f, center = Offset(width * 0.78f - cloudScroll2, cloudHeight * 1.4f - 20f))
+        drawCircle(Color.White.copy(alpha = cloudAlpha * 0.6f), radius = 140f, center = Offset(width * 0.7f - cloudScroll2, cloudHeight * 1.4f))
+        drawCircle(Color.White.copy(alpha = cloudAlpha * 0.6f), radius = 160f, center = Offset(width * 0.78f - cloudScroll2, cloudHeight * 1.4f - 20f))
 
         // Distant hills representing golden fields / forest lines
         val mountPathBack = Path()
@@ -2132,10 +2406,15 @@ fun GameCanvas(
         }
         mountPathBack.lineTo(width, height)
         mountPathBack.close()
-        // Amber/Golden yellow silhouettes for distant crops
-        drawPath(mountPathBack, Color(0xFFCA8A04).copy(alpha = 0.25f))
+        
+        val backHillColor = when (currentMap.id) {
+            "HimalayanPass" -> Color(0xFF64748B).copy(alpha = 0.3f)
+            "GTRoadNight" -> Color(0xFF1E293B).copy(alpha = 0.5f)
+            else -> Color(0xFFCA8A04).copy(alpha = 0.25f)
+        }
+        drawPath(mountPathBack, backHillColor)
 
-        // Closer hills representing lush sugarcane / village tree groves
+        // Closer hills
         val mountPathMid = Path()
         val mountScrollMid = (gameCarX * 0.35f) % (width * 1.5f)
         mountPathMid.moveTo(0f, height)
@@ -2146,8 +2425,13 @@ fun GameCanvas(
         }
         mountPathMid.lineTo(width, height)
         mountPathMid.close()
-        // Lush deep green pastures
-        drawPath(mountPathMid, Color(0xFF15803D).copy(alpha = 0.30f))
+        
+        val midHillColor = when (currentMap.id) {
+            "HimalayanPass" -> Color(0xFF334155).copy(alpha = 0.4f)
+            "GTRoadNight" -> Color(0xFF0F172A).copy(alpha = 0.7f)
+            else -> Color(0xFF15803D).copy(alpha = 0.30f)
+        }
+        drawPath(mountPathMid, midHillColor)
 
         // SPANNING ACTIVE CORE TERRAIN HILL PATH
         val fillPath = Path()
@@ -2187,8 +2471,8 @@ fun GameCanvas(
             path = fillPath,
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF78350F), // Rich warm clay topsoil
-                    Color(0xFF451A03), // Deep earthy black/brown subsoil
+                    Color(currentMap.soilTopColor),
+                    Color(currentMap.soilBottomColor),
                 )
             )
         )
@@ -2196,21 +2480,21 @@ fun GameCanvas(
         // Draw Immersive grassy and golden flowering outline crust of Punjab
         drawPath(
             path = borderPath,
-            color = Color(0xFF166534), // Deep organic forest green root grass backing
+            color = Color(currentMap.grassBackColor), // Deep organic forest green root grass backing
             style = Stroke(width = 8f, join = StrokeJoin.Round)
         )
         drawPath(
             path = borderPath,
-            color = Color(0xFF22C55E), // Lush vibrant green turfgrass outline line
+            color = Color(currentMap.grassFrontColor), // Lush vibrant green turfgrass outline line
             style = Stroke(width = 4f, join = StrokeJoin.Round)
         )
         drawPath(
             path = borderPath,
-            color = Color(0xFFFDE047), // Beautiful golden "Sarson" mustard bloom highlights on the hilltops
+            color = Color(currentMap.flowerColor), // Beautiful golden "Sarson" mustard bloom highlights on the hilltops
             style = Stroke(width = 1.5f, join = StrokeJoin.Round)
         )
 
-        // DRAW BEAUTIFUL PUNJAB VILLAGE RURAL VEGETATION (Wheat and Yellow Mustard / Sarson Stalks)
+        // DRAW MAP-SPECIFIC ENVIRONMENT SCENERY DECORATIONS
         var vegX = startGroundX - (startGroundX % 40f)
         while (vegX <= endGroundX) {
             val vegY = viewModel.getTerrainHeight(vegX)
@@ -2218,34 +2502,102 @@ fun GameCanvas(
             val scrY = toScreenY(vegY)
             if (scrX in -20f..(width + 20f)) {
                 val seed = (vegX.toInt() * 17) % 100
-                if (seed in 0..25) {
-                    // Draw lush green grass blades (wheat stalks)
-                    drawLine(
-                        color = Color(0xFF16A34A),
-                        start = Offset(scrX, scrY),
-                        end = Offset(scrX - 4f, scrY - 14f),
-                        strokeWidth = 2.5f
-                    )
-                    drawLine(
-                        color = Color(0xFF22C55E),
-                        start = Offset(scrX, scrY),
-                        end = Offset(scrX + 5f, scrY - 12f),
-                        strokeWidth = 2f
-                    )
-                } else if (seed in 26..45) {
-                    // Draw majestic yellow flowering Sarson (mustard) plants
-                    // Main organic stem
-                    drawLine(
-                        color = Color(0xFF15803D),
-                        start = Offset(scrX, scrY),
-                        end = Offset(scrX, scrY - 26f),
-                        strokeWidth = 3f
-                    )
-                    // Yellow blossoms (Sarson)
-                    drawCircle(Color(0xFFFDE047), radius = 5f, center = Offset(scrX, scrY - 26f))
-                    drawCircle(Color(0xFFFDE047), radius = 3.5f, center = Offset(scrX - 3.5f, scrY - 23f))
-                    drawCircle(Color(0xFFFDE047), radius = 3.5f, center = Offset(scrX + 3.5f, scrY - 23f))
-                    drawCircle(Color(0xFFEAB308), radius = 2.5f, center = Offset(scrX, scrY - 28f))
+                when (currentMap.id) {
+                    "HimalayanPass" -> {
+                        if (seed in 0..30) {
+                            // Draw scenic snowy pine saplings
+                            // Wooden base trunk
+                            drawLine(
+                                color = Color(0xFF451A03),
+                                start = Offset(scrX, scrY),
+                                end = Offset(scrX, scrY - 14f),
+                                strokeWidth = 2.5f
+                            )
+                            // Pine needle bundle lines
+                            val sPath = Path().apply {
+                                moveTo(scrX, scrY - 28f)
+                                lineTo(scrX - 9f, scrY - 12f)
+                                lineTo(scrX + 9f, scrY - 12f)
+                                close()
+                            }
+                            drawPath(sPath, Color(0xFF1E293B))
+                            // Snow cover peak cap overlay
+                            val snPath = Path().apply {
+                                moveTo(scrX, scrY - 28f)
+                                lineTo(scrX - 5f, scrY - 20f)
+                                lineTo(scrX + 5f, scrY - 20f)
+                                close()
+                            }
+                            drawPath(snPath, Color.White)
+                        }
+                    }
+                    "GTRoadNight" -> {
+                        if (seed in 0..15) {
+                            // Draw highway guardrail barricade posts!
+                            drawLine(
+                                color = Color(0xFF94A3B8), // Metal slate grey post
+                                start = Offset(scrX, scrY),
+                                end = Offset(scrX, scrY - 15f),
+                                strokeWidth = 4f
+                            )
+                            drawCircle(
+                                color = Color(0xFFEF4444), // Crimson danger reflector
+                                radius = 2f,
+                                center = Offset(scrX, scrY - 12f)
+                            )
+                            drawLine(
+                                color = Color(0xFF64748B),
+                                start = Offset(scrX - 20f, scrY - 10f),
+                                end = Offset(scrX + 20f, scrY - 10f),
+                                strokeWidth = 2f
+                            )
+                        } else if (seed in 16..24) {
+                            // Draw shining flight particles (bioluminescence fireflies)
+                            val hoverY = scrY - 25f - (seed % 15f)
+                            drawCircle(
+                                color = Color(0xFF10B981).copy(alpha = 0.5f), // Glowing neon green aura
+                                radius = 4f,
+                                center = Offset(scrX, hoverY)
+                            )
+                            drawCircle(
+                                color = Color.White, // Glowing white center core
+                                radius = 1.5f,
+                                center = Offset(scrX, hoverY)
+                            )
+                        }
+                    }
+                    else -> {
+                        // Punjab Fields standard lush crop vegetation
+                        if (seed in 0..25) {
+                            // Draw lush green grass blades (wheat stalks)
+                            drawLine(
+                                color = Color(0xFF16A34A),
+                                start = Offset(scrX, scrY),
+                                end = Offset(scrX - 4f, scrY - 14f),
+                                strokeWidth = 2.5f
+                            )
+                            drawLine(
+                                color = Color(0xFF22C55E),
+                                start = Offset(scrX, scrY),
+                                end = Offset(scrX + 5f, scrY - 12f),
+                                strokeWidth = 2f
+                            )
+                        } else if (seed in 26..45) {
+                            // Draw majestic yellow flowering Sarson (mustard) plants
+                            // Main organic stem
+                            drawLine(
+                                color = Color(0xFF15803D),
+                                start = Offset(scrX, scrY),
+                                end = Offset(scrX, scrY - 26f),
+                                strokeWidth = 3f
+                            )
+                            // Yellow blossoms (Sarson)
+                            drawCircle(Color(0xFFFDE047), radius = 5f, center = Offset(scrX, scrY - 26f))
+                            drawCircle(Color(0xFFFDE047), radius = 3.5f, center = Offset(scrX - 3.5f, scrY - 23f))
+                            drawCircle(Color(0xFFFDE047), radius = 3.5f, center = Offset(scrX + 3.5f, scrY - 23f))
+                            drawCircle(Color(0xFFEAB308), radius = 2.5f, center = Offset(scrX, scrY - 28f))
+                        }
+                    }
                 }
             }
             vegX += 40f

@@ -40,6 +40,64 @@ enum class VehicleType(
     SPORTS_RACER("SportsRacer", "Sports Racer", "Low center of gravity, ultra-fast racing engine.", 0.9f, 520f, 1.5f, 0.7f, 90f, 22f, 16f, 6000)
 }
 
+enum class MapType(
+    val id: String,
+    val displayName: String,
+    val description: String,
+    val unlockCost: Int,
+    val bgSkyTopColor: Long,
+    val bgSkyMidColor: Long,
+    val bgSkyHorizonColor: Long,
+    val soilTopColor: Long,
+    val soilBottomColor: Long,
+    val grassBackColor: Long,
+    val grassFrontColor: Long,
+    val flowerColor: Long
+) {
+    PUNJAB_FIELDS(
+        "PunjabFields",
+        "Punjab Fields",
+        "Rich fertile plains of Punjab with lush green mustard fields & bright golden flowers.",
+        0,
+        0xFF7DD3FC, // Sky soft cyan-blue
+        0xFFFED7AA, // Soft warm sunrise orange
+        0xFFFEF08A, // Sunny gold hue of yellow pastures near horizon
+        0xFF78350F, // Rich warm clay topsoil
+        0xFF451A03, // Deep earthy black/brown subsoil
+        0xFF166534, // Deep organic forest green root grass backing
+        0xFF22C55E, // Lush vibrant green turfgrass outline line
+        0xFFFDE047  // Beautiful yellow sarson bloom
+    ),
+    HIMALAYAN_PASS(
+        "HimalayanPass",
+        "Himalayan Peak",
+        "Challenging deep vertical climbs on snowy and ice-glazed Himalayan cliffs.",
+        2000,
+        0xFF1E1B4B, // Deep twilight indigo
+        0xFF311042, // Purple ridge
+        0xFF881337, // Red dawn horizon
+        0xFF1E293B, // Rock slate grey
+        0xFF0F172A, // Deep space slate dark
+        0xFFCBD5E1, // Soft snow white back
+        0xFFF1F5F9, // Crisp bright white front
+        0xFF93C5FD  // Glimmering ice highlights
+    ),
+    GT_ROAD_NIGHT(
+        "GTRoadNight",
+        "GT Road Night",
+        "Drive under the silver crescent moon of Grand Trunk Road with glowing dhabas and starry horizons.",
+        3500,
+        0xFF020617, // Sky pitch black
+        0xFF0B1329, // Midnight dark blue
+        0xFF1E1E38, // Purple twilight horizon
+        0xFF374151, // Grey asphalt pavement topsoil
+        0xFF111827, // Dark pavement base
+        0xFF4B5563, // Guardrails grey
+        0xFF10B981, // Glowing emerald green neon edge
+        0xFFEF4444  // Ruby hazard warning lane indicators
+    )
+}
+
 data class Particle(
     val x: Float,
     val y: Float,
@@ -116,6 +174,12 @@ class GameViewModel(
     private val _unlockedVehicles = MutableStateFlow<Set<String>>(setOf("Buggy"))
     val unlockedVehicles: StateFlow<Set<String>> = _unlockedVehicles.asStateFlow()
 
+    private val _unlockedMaps = MutableStateFlow<Set<String>>(setOf("PunjabFields"))
+    val unlockedMaps: StateFlow<Set<String>> = _unlockedMaps.asStateFlow()
+
+    private val _selectedMap = MutableStateFlow<String>("PunjabFields")
+    val selectedMap: StateFlow<String> = _selectedMap.asStateFlow()
+
     private val _nitroCharges = MutableStateFlow(2)
     val nitroCharges: StateFlow<Int> = _nitroCharges.asStateFlow()
 
@@ -133,6 +197,12 @@ class GameViewModel(
         val sp = application.getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
         val saved = sp.getStringSet("unlocked_vehicles", setOf("Buggy")) ?: setOf("Buggy")
         _unlockedVehicles.value = saved
+
+        val savedMaps = sp.getStringSet("unlocked_maps", setOf("PunjabFields")) ?: setOf("PunjabFields")
+        _unlockedMaps.value = savedMaps
+
+        val activeMap = sp.getString("selected_map", "PunjabFields") ?: "PunjabFields"
+        _selectedMap.value = activeMap
         
         val nitroCount = sp.getInt("nitro_charges", 2)
         _nitroCharges.value = nitroCount
@@ -142,6 +212,34 @@ class GameViewModel(
         _unlockedVehicles.value = vehicles
         val sp = getApplication<Application>().getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
         sp.edit().putStringSet("unlocked_vehicles", vehicles).apply()
+    }
+
+    // Select different map
+    fun selectMap(mapId: String) {
+        if (mapId in unlockedMaps.value) {
+            _selectedMap.value = mapId
+            val sp = getApplication<Application>().getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
+            sp.edit().putString("selected_map", mapId).apply()
+        }
+    }
+
+    // Purchase / Unlock maps
+    fun unlockMap(map: MapType) {
+        val currentProfile = playerProfile.value ?: PlayerProfile()
+        if (currentProfile.coins >= map.unlockCost) {
+            val updatedMaps = unlockedMaps.value + map.id
+            _unlockedMaps.value = updatedMaps
+            
+            val sp = getApplication<Application>().getSharedPreferences("hill_climb_prefs", android.content.Context.MODE_PRIVATE)
+            sp.edit().putStringSet("unlocked_maps", updatedMaps).apply()
+            
+            viewModelScope.launch {
+                repository.saveProfile(currentProfile.copy(
+                    coins = currentProfile.coins - map.unlockCost
+                ))
+            }
+            selectMap(map.id)
+        }
     }
 
     // Select different vehicle
@@ -327,30 +425,72 @@ class GameViewModel(
             return -450f + (x - 20f) * 12f
         }
         
-        // Base sine frequencies
-        val baseHills = sin(x * 0.003f) * 120f
-        val details = sin(x * 0.015f) * 35f
-        val mountains = cos(x * 0.0006f) * 220f
-        
-        // Progression increments: steeper segments
-        var slant = 0f
-        if (x > 600f) {
-            val progress = min(1f, (x - 600f) / 1000f)
-            slant += progress * (x - 600f) * 0.06f // steep incline
+        return when (_selectedMap.value) {
+            "HimalayanPass" -> {
+                // Steep high mountain climbs and icy dips
+                val baseHills = sin(x * 0.005f) * 200f
+                val details = sin(x * 0.02f) * 45f
+                val mountains = cos(x * 0.0008f) * 260f
+                var slant = 0f
+                if (x > 400f) {
+                    val progress = min(1f, (x - 400f) / 1200f)
+                    slant += progress * (x - 400f) * 0.15f // heavy elevation gain
+                }
+                if (x > 1800f) {
+                    val progress = min(1f, (x - 1800f) / 1000f)
+                    slant -= progress * (x - 1800f) * 0.16f // sudden downslopes
+                }
+                if (x > 3200f) {
+                    slant += sin(x * 0.006f) * 220f
+                }
+                val bumps = sin(x * 0.12f) * 3f
+                baseHills + details + mountains + slant + bumps
+            }
+            "GTRoadNight" -> {
+                // Flatter asphalt highway roads with speedbumps and periodic bridge gap jumps
+                val baseHills = sin(x * 0.001f) * 35f
+                val details = sin(x * 0.005f) * 10f
+                
+                val bumpInterval = 500f
+                val nearBump = x % bumpInterval
+                val bumpHeight = if (nearBump in 120f..180f) {
+                    sin((nearBump - 120f) / 60f * PI.toFloat()) * 30f
+                } else 0f
+                
+                val gapInterval = 1200f
+                val nearGap = x % gapInterval
+                val gapHeight = if (nearGap in 300f..420f) {
+                    -sin((nearGap - 300f) / 120f * PI.toFloat()) * 80f
+                } else 0f
+                
+                baseHills + details + bumpHeight + gapHeight
+            }
+            else -> {
+                // Base sine frequencies
+                val baseHills = sin(x * 0.003f) * 120f
+                val details = sin(x * 0.015f) * 35f
+                val mountains = cos(x * 0.0006f) * 220f
+                
+                // Progression increments: steeper segments
+                var slant = 0f
+                if (x > 600f) {
+                    val progress = min(1f, (x - 600f) / 1000f)
+                    slant += progress * (x - 600f) * 0.06f // steep incline
+                }
+                if (x > 2000f) {
+                    val progress = min(1f, (x - 2000f) / 1500f)
+                    slant -= progress * (x - 2000f) * 0.12f // downhill slide
+                }
+                if (x > 4000f) {
+                    // Extreme waves
+                    slant += sin(x * 0.008f) * 180f
+                }
+                
+                // Tiny noisy bumps for physical feedback
+                val bumps = sin(x * 0.09f) * 4f * (1f + sin(x * 0.005f) * 0.5f)
+                baseHills + details + mountains + slant + bumps
+            }
         }
-        if (x > 2000f) {
-            val progress = min(1f, (x - 2000f) / 1500f)
-            slant -= progress * (x - 2000f) * 0.12f // downhill slide
-        }
-        if (x > 4000f) {
-            // Extreme waves
-            slant += sin(x * 0.008f) * 180f
-        }
-        
-        // Tiny noisy bumps for physical feedback
-        val bumps = sin(x * 0.09f) * 4f * (1f + sin(x * 0.005f) * 0.5f)
-        
-        return baseHills + details + mountains + slant + bumps
     }
 
     // Terrain slope

@@ -176,25 +176,12 @@ object LobbyMusicPlayer {
     fun startBackgroundDownloads() {
         val context = appContext ?: return
         downloadScope.launch {
-            // Check existing files on disk first
+            // All tracks are pre-packaged in the application's assets so they are always Downloaded!
             val currentStates = mutableMapOf<MusicTrack, DownloadStatus>()
             MusicTrack.entries.forEach { track ->
-                val cachedFile = File(context.filesDir, "track_${track.name}.mp3")
-                if (cachedFile.exists() && cachedFile.length() > 500 * 1024) {
-                    currentStates[track] = DownloadStatus.Downloaded
-                } else {
-                    currentStates[track] = DownloadStatus.NotDownloaded
-                }
+                currentStates[track] = DownloadStatus.Downloaded
             }
             _downloadStates.value = currentStates
-
-            // Auto download non-cached tracks sequentially
-            MusicTrack.entries.forEach { track ->
-                val cachedFile = File(context.filesDir, "track_${track.name}.mp3")
-                if (!cachedFile.exists() || cachedFile.length() < 500 * 1024) {
-                    downloadTrackSuspend(track)
-                }
-            }
         }
     }
 
@@ -330,17 +317,34 @@ object LobbyMusicPlayer {
                                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                                     .build()
                             )
-                            val cachedFile = appContext?.let { context ->
-                                File(context.filesDir, "track_${currentTrack.name}.mp3")
+                            var loadedFromAsset = false
+                            val assetManager = appContext?.assets
+                            if (assetManager != null) {
+                                try {
+                                    val afd = assetManager.openFd("track_${currentTrack.name}.mp3")
+                                    instance.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                                    afd.close()
+                                    isOfflinePlayback = true
+                                    loadedFromAsset = true
+                                    Log.d(TAG, "Successfully loaded track_${currentTrack.name}.mp3 from packaged assets!")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed loading track_${currentTrack.name}.mp3 from assets: ${e.message}")
+                                }
                             }
-                            if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 500 * 1024) {
-                                Log.d(TAG, "Playing from offline cache: ${cachedFile.absolutePath}")
-                                instance.setDataSource(cachedFile.absolutePath)
-                                isOfflinePlayback = true
-                            } else {
-                                Log.d(TAG, "No cache: streaming from remote URL: $streamUrl")
-                                instance.setDataSource(streamUrl)
-                                isOfflinePlayback = false
+
+                            if (!loadedFromAsset) {
+                                val cachedFile = appContext?.let { context ->
+                                    File(context.filesDir, "track_${currentTrack.name}.mp3")
+                                }
+                                if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 500 * 1024) {
+                                    Log.d(TAG, "Playing from offline cache: ${cachedFile.absolutePath}")
+                                    instance.setDataSource(cachedFile.absolutePath)
+                                    isOfflinePlayback = true
+                                } else {
+                                    Log.d(TAG, "No cache: streaming from remote URL: $streamUrl")
+                                    instance.setDataSource(streamUrl)
+                                    isOfflinePlayback = false
+                                }
                             }
                             instance.isLooping = true
                         } catch (e: Exception) {
