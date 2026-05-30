@@ -268,6 +268,16 @@ class GameViewModel(
         }
     }
 
+    // Developer Cheat Tool to instantly add coins
+    fun cheatAddCoins(amount: Int) {
+        val currentProfile = playerProfile.value ?: PlayerProfile()
+        viewModelScope.launch {
+            repository.saveProfile(currentProfile.copy(
+                coins = currentProfile.coins + amount
+            ))
+        }
+    }
+
     // Purchase Upgrades (Engine, Suspension, Tires, Fuel)
     fun purchaseUpgrade(upgradeName: String) {
         val profile = playerProfile.value ?: PlayerProfile()
@@ -988,7 +998,8 @@ class GameViewModel(
                 val dist = sqrt(dx*dx + dy*dy)
                 if (dist <= collRadius) {
                     collectedCoinIds.add(idx)
-                    coinsAwarded += 5
+                    val coinVal = if (idx % 2 == 0) 5 else 10
+                    coinsAwarded += coinVal
                     spawnPickupSplash(coinX, coinY, 0xFFFFD700, particlesList) // Golden flash
                 }
             }

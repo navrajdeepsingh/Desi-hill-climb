@@ -176,10 +176,42 @@ object LobbyMusicPlayer {
     fun startBackgroundDownloads() {
         val context = appContext ?: return
         downloadScope.launch {
-            // All tracks are pre-packaged in the application's assets so they are always Downloaded!
             val currentStates = mutableMapOf<MusicTrack, DownloadStatus>()
             MusicTrack.entries.forEach { track ->
-                currentStates[track] = DownloadStatus.Downloaded
+                val assetName = "track_${track.name}.mp3"
+                val inAssets = try {
+                    context.assets.open(assetName).use { true }
+                } catch (e: Exception) {
+                    false
+                }
+                val inCache = File(context.filesDir, assetName).exists()
+
+                if (inAssets || inCache) {
+                    currentStates[track] = DownloadStatus.Downloaded
+                    // If in assets but not in cache yet, copy to cache to prevent openFd compressed issue during playback
+                    if (inAssets && !inCache) {
+                        try {
+                            val targetFile = File(context.filesDir, assetName)
+                            val tempFile = File(context.filesDir, "temp_$assetName")
+                            context.assets.open(assetName).use { input ->
+                                FileOutputStream(tempFile).use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            if (tempFile.exists() && tempFile.length() > 500 * 1024) {
+                                if (targetFile.exists()) targetFile.delete()
+                                tempFile.renameTo(targetFile)
+                                Log.d(TAG, "Successfully extracted assets track: $assetName to cache")
+                            } else {
+                                tempFile.delete()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error copying compressed asset $assetName to cache: ${e.message}")
+                        }
+                    }
+                } else {
+                    currentStates[track] = DownloadStatus.NotDownloaded
+                }
             }
             _downloadStates.value = currentStates
         }
@@ -308,6 +340,37 @@ object LobbyMusicPlayer {
             playerJob = playerScope.launch {
                 try {
                     cleanUpMediaPlayer()
+
+                    // Pre-copy compressed asset to local cache if needed
+                    val assetName = "track_${currentTrack.name}.mp3"
+                    val cachedFile = appContext?.let { File(it.filesDir, assetName) }
+                    if (cachedFile != null && !cachedFile.exists()) {
+                        val inAssets = try {
+                            appContext?.assets?.open(assetName)?.use { true } ?: false
+                        } catch (e: Exception) {
+                            false
+                        }
+                        if (inAssets) {
+                            try {
+                                val tempFile = File(appContext!!.filesDir, "temp_$assetName")
+                                appContext!!.assets.open(assetName).use { input ->
+                                    FileOutputStream(tempFile).use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                if (tempFile.exists() && tempFile.length() > 500 * 1024) {
+                                    if (cachedFile.exists()) cachedFile.delete()
+                                    tempFile.renameTo(cachedFile)
+                                    Log.d(TAG, "Successfully extracted assets track inside start(): $assetName to cache")
+                                } else {
+                                    tempFile.delete()
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error copying compressed asset in start(): ${e.message}")
+                            }
+                        }
+                    }
+
                     val mp = withContext(Dispatchers.IO) {
                         val instance = MediaPlayer()
                         try {
@@ -317,34 +380,16 @@ object LobbyMusicPlayer {
                                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                                     .build()
                             )
-                            var loadedFromAsset = false
-                            val assetManager = appContext?.assets
-                            if (assetManager != null) {
-                                try {
-                                    val afd = assetManager.openFd("track_${currentTrack.name}.mp3")
-                                    instance.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                                    afd.close()
-                                    isOfflinePlayback = true
-                                    loadedFromAsset = true
-                                    Log.d(TAG, "Successfully loaded track_${currentTrack.name}.mp3 from packaged assets!")
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Failed loading track_${currentTrack.name}.mp3 from assets: ${e.message}")
-                                }
-                            }
-
-                            if (!loadedFromAsset) {
-                                val cachedFile = appContext?.let { context ->
-                                    File(context.filesDir, "track_${currentTrack.name}.mp3")
-                                }
-                                if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 500 * 1024) {
-                                    Log.d(TAG, "Playing from offline cache: ${cachedFile.absolutePath}")
-                                    instance.setDataSource(cachedFile.absolutePath)
-                                    isOfflinePlayback = true
-                                } else {
-                                    Log.d(TAG, "No cache: streaming from remote URL: $streamUrl")
-                                    instance.setDataSource(streamUrl)
-                                    isOfflinePlayback = false
-                                }
+                            var loaded = false
+                            if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 500 * 1024) {
+                                Log.d(TAG, "Playing local cached MP3: ${cachedFile.absolutePath}")
+                                instance.setDataSource(cachedFile.absolutePath)
+                                isOfflinePlayback = true
+                                loaded = true
+                            } else {
+                                Log.d(TAG, "No cache: streaming from remote URL: $streamUrl")
+                                instance.setDataSource(streamUrl)
+                                isOfflinePlayback = false
                             }
                             instance.isLooping = true
                         } catch (e: Exception) {
@@ -390,6 +435,7 @@ object LobbyMusicPlayer {
                             try {
                                 player.release()
                             } catch (e: Exception) {}
+                            startSynthFallback()
                         }
                         true
                     }
@@ -405,6 +451,7 @@ object LobbyMusicPlayer {
                                 mediaPlayer = null
                                 isStreamingActive = false
                                 isOfflinePlayback = false
+                                startSynthFallback()
                             }
                         } else {
                             mp.release()
@@ -414,6 +461,7 @@ object LobbyMusicPlayer {
                     Log.e(TAG, "Exception during media setup: ${e.message}")
                     isStreamingActive = false
                     isOfflinePlayback = false
+                    startSynthFallback()
                 }
             }
         }

@@ -252,7 +252,8 @@ fun GameScreen(
                 isRadioOn = isRadioOn,
                 onRadioToggle = { isRadioOn = !isRadioOn },
                 nitroCharges = nitroCount,
-                onBuyNitro = { viewModel.purchaseNitro() }
+                onBuyNitro = { viewModel.purchaseNitro() },
+                onCheatAddCoins = { viewModel.cheatAddCoins(it) }
             )
         } else {
             // Active Physics Gameplay View
@@ -294,7 +295,8 @@ fun GarageMenuScreen(
     isRadioOn: Boolean,
     onRadioToggle: () -> Unit,
     nitroCharges: Int,
-    onBuyNitro: () -> Unit
+    onBuyNitro: () -> Unit,
+    onCheatAddCoins: (Int) -> Unit
 ) {
     var activeTab by remember { mutableStateOf(0) } // 0: Garage, 1: High Scores
 
@@ -339,30 +341,53 @@ fun GarageMenuScreen(
                 )
             }
 
-            // Wallet Display (Coins Available) - Sleek and compact
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.border(1.dp, Color(0xFF49454F), RoundedCornerShape(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Developer Cheat Button
+                Button(
+                    onClick = { onCheatAddCoins(100000) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MonetizationOn,
-                        contentDescription = "Coins Balance",
-                        tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${profile.coins}",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        text = "DEV +100K 🪙",
                         color = Color.White,
-                        modifier = Modifier.testTag("coin_wallet")
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
+                }
+
+                // Wallet Display (Coins Available) - Sleek and compact
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.border(1.dp, Color(0xFF49454F), RoundedCornerShape(8.dp))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MonetizationOn,
+                            contentDescription = "Coins Balance",
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${profile.coins}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            modifier = Modifier.testTag("coin_wallet")
+                        )
+                    }
                 }
             }
         }
@@ -2682,23 +2707,126 @@ fun GameCanvas(
             val screenCoinY = toScreenY(viewModel.getTerrainHeight(coinX) + 32f)
             
             if (screenCoinX in -30f..(width + 30f)) {
-                // Drawing 3D golden coin loops
-                drawCircle(
-                    color = Color(0xFFB45309), // Bronze border
-                    radius = 12f,
-                    center = Offset(screenCoinX, screenCoinY)
-                )
-                drawCircle(
-                    color = Color(0xFFFFD700), // Shiny Gold interior
-                    radius = 9f,
-                    center = Offset(screenCoinX, screenCoinY)
-                )
-                // Draw inner core symbol
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.8f),
-                    radius = 4f,
-                    center = Offset(screenCoinX - 2f, screenCoinY - 2f)
-                )
+                // Drawing 3D golden/silver spinning coins with numbers written
+                drawContext.canvas.nativeCanvas.apply {
+                    val scaleFactorX = kotlin.math.cos(gameCarX * 0.05f + cIdx)
+                    if (kotlin.math.abs(scaleFactorX) > 0.08f) {
+                        save()
+                        translate(screenCoinX, screenCoinY)
+                        scale(scaleFactorX, 1.0f)
+
+                        val isTen = (cIdx % 2 != 0)
+
+                        if (isTen) {
+                            // Rs 10 Bimetallic Coin 🪙 (Outer Gold rim, Inner Silver core)
+                            // Outer golden ring fill
+                            val outerGoldPaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#EAB308")
+                                style = android.graphics.Paint.Style.FILL
+                                isAntiAlias = true
+                            }
+                            // Bronze border outline
+                            val borderBronzePaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#78350F")
+                                style = android.graphics.Paint.Style.STROKE
+                                strokeWidth = 1.6f
+                                isAntiAlias = true
+                            }
+                            // Inner silver center fill
+                            val innerSilverPaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#E2E8F0")
+                                style = android.graphics.Paint.Style.FILL
+                                isAntiAlias = true
+                            }
+                            // Shine highlight
+                            val shinePaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                style = android.graphics.Paint.Style.FILL
+                                isAntiAlias = true
+                                alpha = 160
+                            }
+
+                            drawCircle(0f, 0f, 15f, outerGoldPaint)
+                            drawCircle(0f, 0f, 15f, borderBronzePaint)
+                            drawCircle(0f, 0f, 9.5f, innerSilverPaint)
+                            drawCircle(-3f, -3f, 3.5f, shinePaint)
+
+                            // Numerical denomination text
+                            val textPaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#1E293B")
+                                textSize = 10f
+                                typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                isAntiAlias = true
+                            }
+                            val textOutlinePaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                textSize = 10f
+                                typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                style = android.graphics.Paint.Style.STROKE
+                                strokeWidth = 1.5f
+                                isAntiAlias = true
+                            }
+
+                            drawText("10", 0f, 3.5f, textOutlinePaint)
+                            drawText("10", 0f, 3.5f, textPaint)
+                        } else {
+                            // Brass Coin 🪙 (Full Shiny Golden Brass coin representing Rs 5)
+                            val brassPaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#F59E0B")
+                                style = android.graphics.Paint.Style.FILL
+                                isAntiAlias = true
+                            }
+                            val outerRimPaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#B45309")
+                                style = android.graphics.Paint.Style.STROKE
+                                strokeWidth = 1.8f
+                                isAntiAlias = true
+                            }
+                            val innerGroovePaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#D97706")
+                                style = android.graphics.Paint.Style.STROKE
+                                strokeWidth = 1.0f
+                                isAntiAlias = true
+                            }
+                            val shinePaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                style = android.graphics.Paint.Style.FILL
+                                isAntiAlias = true
+                                alpha = 130
+                            }
+
+                            drawCircle(0f, 0f, 13f, brassPaint)
+                            drawCircle(0f, 0f, 13f, outerRimPaint)
+                            drawCircle(0f, 0f, 9.0f, innerGroovePaint)
+                            drawCircle(-2.5f, -2.5f, 3.0f, shinePaint)
+
+                            // Numerical denomination text
+                            val textPaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#451A03")
+                                textSize = 11f
+                                typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                isAntiAlias = true
+                            }
+                            val textOutlinePaint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                textSize = 11f
+                                typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                style = android.graphics.Paint.Style.STROKE
+                                strokeWidth = 1.5f
+                                isAntiAlias = true
+                            }
+
+                            drawText("5", 0f, 4.0f, textOutlinePaint)
+                            drawText("5", 0f, 4.0f, textPaint)
+                        }
+
+                        restore()
+                    }
+                }
             }
         }
 
