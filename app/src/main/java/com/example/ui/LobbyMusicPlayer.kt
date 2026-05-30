@@ -198,7 +198,7 @@ object LobbyMusicPlayer {
                                     input.copyTo(output)
                                 }
                             }
-                            if (tempFile.exists() && tempFile.length() > 500 * 1024) {
+                            if (tempFile.exists() && tempFile.length() > 1024) {
                                 if (targetFile.exists()) targetFile.delete()
                                 tempFile.renameTo(targetFile)
                                 Log.d(TAG, "Successfully extracted assets track: $assetName to cache")
@@ -285,7 +285,7 @@ object LobbyMusicPlayer {
                 input.close()
             }
 
-            if (tempFile.exists() && tempFile.length() > 500 * 1024) {
+            if (tempFile.exists() && tempFile.length() > 1024) {
                 if (targetFile.exists()) targetFile.delete()
                 val renameSuccess = tempFile.renameTo(targetFile)
                 if (renameSuccess) {
@@ -358,7 +358,7 @@ object LobbyMusicPlayer {
                                         input.copyTo(output)
                                     }
                                 }
-                                if (tempFile.exists() && tempFile.length() > 500 * 1024) {
+                                if (tempFile.exists() && tempFile.length() > 1024) {
                                     if (cachedFile.exists()) cachedFile.delete()
                                     tempFile.renameTo(cachedFile)
                                     Log.d(TAG, "Successfully extracted assets track inside start(): $assetName to cache")
@@ -381,7 +381,7 @@ object LobbyMusicPlayer {
                                     .build()
                             )
                             var loaded = false
-                            if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 500 * 1024) {
+                            if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 1024) {
                                 Log.d(TAG, "Playing local cached MP3: ${cachedFile.absolutePath}")
                                 instance.setDataSource(cachedFile.absolutePath)
                                 isOfflinePlayback = true
